@@ -35,7 +35,6 @@ class NetPool:
         if os.path.isfile(self.str2id_path):
             self.net_str2id = json.load(open(self.str2id_path, 'r'))
         if os.path.isfile(self.id2val_path):
-            print self.id2val_path
             net_id2val = json.load(open(self.id2val_path, 'r'))
             for key in net_id2val:
                 self.net_id2val[int(key)] = net_id2val[key]

@@ -217,7 +217,7 @@ class LocalController:
         print('{}: {}'.format(self.gpuid, expdir))
         try:
             used_time, result = self.run(expdir)
-            queue.put([idx, (result, used_time)])
+            queue.put([idx, (round(result, 5), used_time)])
             print('{}th task: {} is successfully executed, result is {}, using {} min.'.
                   format(idx, expdir, result, used_time))
         except Exception as err:
