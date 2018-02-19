@@ -205,13 +205,11 @@ class LocalController:
         return (end_time - start_time), valid_performance
 
     def check_on(self, queue):
-        if not self.gpu_checker.is_on():
-            if self._on_running is not None:
-                queue.put(self._on_running)
-                self._on_running = None
-                print('Remote Error.')
-            return False
-        return True
+        if self._on_running is not None:
+            queue.put(self._on_running)
+            self._on_running = None
+            print('Remote Error.')
+        return False
 
     def remote_executer(self, idx, expdir, queue):
         self.occupied = True
