@@ -198,7 +198,7 @@ class BasicModel:
 		if print_info: print('Run configs dump to %s' % run_save_path)
 	
 	def save_init(self, save_path, print_info=True):
-		os.makedirs(save_path, exist_ok=True)
+		os.makedirs(save_path)
 		save_path = os.path.join(save_path, 'init')
 		to_save_init = self.net_config.renew_init(self)
 		to_save_init['dataset'] = self.run_config.dataset
