@@ -245,6 +245,7 @@ class LocalClusterController:
             remotes_available, occupy_num = self.get_available(queue)
         while not remotes_available[self._pt]:
             self._pt = (self._pt + 1) % len(self.cluster)
+            print self._pt
         choose_remote = self.cluster[self._pt]
         self._pt = (self._pt + 1) % len(self.cluster)
         return choose_remote
