@@ -187,7 +187,7 @@ class ArchManager:
                 net_val_list[_i] = net_val
 
         task_list = [[net_folder, to_run[net_folder]] for net_folder in to_run]
-        # distributed.run(task_list)
+        distributed.run(task_list)
         episode_total_running_time = 0
         for net_folder, idx, net_val in task_list:
             net_str = net_str_list[idx[0]]
