@@ -1,2 +1,4 @@
 [
+    ["<client 1 address>", "/device:GPU:0", "client.py"],
+    ["<client 2 address>", "/device:GPU:1", "client.py"],
 ]

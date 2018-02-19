@@ -176,6 +176,8 @@ class ClusterController:
 
 
 def run_tasks(config_list, expdir_list):
+    print "config_list", config_list
+    print "expdir_list", expdir_list
     controller = ClusterController(config_list)
     result_list = [None for _ in expdir_list]
 
