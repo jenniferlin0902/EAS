@@ -215,7 +215,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
     # episode config
     episode_config = {
-        'batch_size': 10,
+        'batch_size': 2,
         'wider_action_num': 4,
         'deeper_action_num': 5,
     }
