@@ -372,4 +372,3 @@ class BasicModel:
             return tf.reshape(_input, [-1, np.prod(input_shape[1:])])
         else:
             return _input
->>>>>>> ed3ecd56010cfd30cc843bb3e890fc8f64f6d72f
