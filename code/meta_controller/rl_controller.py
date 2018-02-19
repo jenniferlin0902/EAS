@@ -23,7 +23,10 @@ class RLNet2NetController(BaseController):
             print('No model files in ' + '%s/model.ckpt.index' % self.path)
 
     def __init__(self, path, entropy_penalty,
-                 encoder: EncoderNet, wider_actor: WiderActorNet, deeper_actor: DeeperActorNet, opt_config):
+                 encoder, wider_actor, deeper_actor, opt_config):
+        assert(isinstance(encoder, EncoderNet))
+        assert(isinstance(wider_actor, WiderActorNet))
+        assert(isinstance(deeper_actor, DeeperActorNet))
         BaseController.__init__(self, path)
         self.entropy_penalty = entropy_penalty
 

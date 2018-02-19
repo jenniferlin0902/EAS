@@ -7,8 +7,8 @@ import json
 import pickle
 import numpy as np
 from data_providers.utils import get_data_provider_by_name
-from expdir_monitor.expdir_monitor import ExpdirMonitor
-from expdir_monitor import distributed
+from expdir_monitor import ExpdirMonitor
+import distributed
 
 
 class NetPool:

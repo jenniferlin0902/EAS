@@ -112,7 +112,7 @@ class RemoteController:
     def remote_executer(self, idx, expdir, queue):
         self.occupied = True
         cmd = self.exe_cmd
-        print('{}: {} {}'.format(self.remote, cmd, expdir), file=stderr)
+        print('{}: {} {}'.format(self.remote, cmd, expdir))
         result = self.run(cmd, stdin=expdir)
         try:
             result = str(result).split('\n')
@@ -126,10 +126,10 @@ class RemoteController:
             result = float(result)
             queue.put([idx, (result, used_time)])
             print('{}th task: {} is successfully executed, result is {}, using {} min.'.
-                  format(idx, expdir, result, used_time), file=stderr)
+                  format(idx, expdir, result, used_time))
         except Exception:
             queue.put([idx, expdir])
-            print('{}th task: {} fails, with return: %s.'.format(idx, expdir, result), file=stderr)
+            print('{}th task: {} fails, with return: %s.'.format(idx, expdir, result))
         self.occupied = False
 
     def execute(self, idx, expdir, queue):
@@ -199,7 +199,7 @@ def run_tasks(config_list, expdir_list):
 def run(task_list):
     with open(config_file, 'r') as f:
         config_list = json.load(f)
-    expdir_list = [expdir for expdir, *_ in task_list]
+    expdir_list = [expdir for expdir, _ in task_list]
     result_list = run_tasks(config_list, expdir_list)
     for idx, _ in enumerate(task_list):
         task_list[idx].append(result_list[idx])
