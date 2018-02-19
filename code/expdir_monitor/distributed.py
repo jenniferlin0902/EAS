@@ -8,7 +8,7 @@ import re
 import json
 import shlex
 
-max_running_machine = 5
+max_running_machine = 2
 
 _max_used_mem = 0.3
 _max_used_gpu = 0.3
@@ -240,12 +240,20 @@ class LocalClusterController:
 
     def choice(self, queue):
         remotes_available, occupy_num = self.get_available(queue)
+        print 'available:', remotes_available
+        print 'occupy_num:', occupy_num
         while occupy_num >= max_running_machine:
+            print 'Fully occupied. Wait for 5 seconds'
             sleep(0.5)
             remotes_available, occupy_num = self.get_available(queue)
         while not remotes_available[self._pt]:
             self._pt = (self._pt + 1) % len(self.cluster)
-            print self._pt
+            if self._pt == 0:
+                print 'Well... Not supposed to be here'
+                print 'Fully occupied. Wait for 5 seconds'
+                sleep(0.5)
+                remotes_available, occupy_num = self.get_available(queue)
+        print 'Choose:', self._pt
         choose_remote = self.cluster[self._pt]
         self._pt = (self._pt + 1) % len(self.cluster)
         return choose_remote
