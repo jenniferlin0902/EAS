@@ -1,6 +1,6 @@
 from subprocess import Popen, PIPE
 from threading import Thread, Lock
-from queue import Queue
+from Queue import Queue
 from time import sleep
 from sys import stderr
 import re
