@@ -197,6 +197,7 @@ def run_tasks(config_list, expdir_list):
 
 
 def run(task_list):
+    print 'config_file', config_file
     with open(config_file, 'r') as f:
         config_list = json.load(f)
     expdir_list = [expdir for expdir, _ in task_list]
