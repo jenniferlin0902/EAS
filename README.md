@@ -1,3 +1,5 @@
+Final Project of CS234
+
 # Efficient Architecture Search by Network Transformation
 
 Code for the paper [Efficient Architecture Search by Network Transformation](https://arxiv.org/abs/1707.04873) in AAAI-18. 
