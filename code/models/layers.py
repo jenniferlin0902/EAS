@@ -49,7 +49,7 @@ def get_random_remapping(old_size, new_size):
     return indices, magnifier
 
 
-class BaseLayer:
+class BaseLayer(object):
     """
     _id, batch normalization, activation, dropout, ready
     """
@@ -177,7 +177,7 @@ class ConvLayer(BaseLayer):
     @property
     def variable_list(self):
         var_list = {'kernel': 'kernel:0'}
-        var_list.update(super(type(ConvLayer), self).variable_list)
+        var_list.update(super(ConvLayer, self).variable_list)
         return var_list
 
     def get_config(self):
