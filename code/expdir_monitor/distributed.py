@@ -263,9 +263,6 @@ class LocalClusterController:
         remotes_available = [False] * len(self.cluster)
         occupy_num = len(self.cluster)
         for _i, remote in enumerate(self.cluster):
-            if not remote.check_on(queue):
-                occupy_num -= 1
-                continue
             if not remote.occupied:
                 remotes_available[_i] = True
                 occupy_num -= 1
