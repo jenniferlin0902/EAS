@@ -9,7 +9,7 @@ import copy
 
 run_config_cifar = {
 	'batch_size': 64,
-	'n_epochs': 2,
+	'n_epochs': 300,
 	'init_lr': 0.1,
 	'reduce_lr_epochs': [0.5, 0.75],  # epochs * 0.5, epochs * 0.75
 	'reduce_lr_factors': [10, 10],
@@ -41,7 +41,7 @@ standard_net_config = {
 
 run_config_svhn = copy.deepcopy(run_config_cifar)
 run_config_svhn.update({
-	'n_epochs': 3,
+	'n_epochs': 40,
 	'dataset': 'SVHN',
 	'validation_size': 10000,
 	'validation_frequency': 1,
@@ -53,7 +53,7 @@ run_config_svhn.update({
 
 run_config_mnist = copy.deepcopy(run_config_cifar)
 run_config_mnist.update({
-    'n_epochs' : 1,
+    'n_epochs' : 300,
     'dataset': 'MNIST',
     'validation_size': 10000,
     'validation_frequency': 1,
