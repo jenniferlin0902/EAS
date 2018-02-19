@@ -72,7 +72,7 @@ class RunConfig:
         if dataset in ['C10', 'C10+', 'C100', 'C100+']:
             run_config = {
                 'batch_size': 64,
-                'n_epochs': 300,
+                'n_epochs': 3,
                 'init_lr': 0.1,
                 'reduce_lr_epochs': [0.5, 0.75],  # epochs * 0.5, epochs * 0.75
                 'reduce_lr_factors': [10, 10],
