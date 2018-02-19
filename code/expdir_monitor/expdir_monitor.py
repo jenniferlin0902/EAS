@@ -9,7 +9,8 @@ import pickle
 class ExpdirMonitor:
 	def __init__(self, expdir):
 		self.expdir = os.path.realpath(expdir)
-		os.makedirs(self.expdir, exist_ok=True)
+		if not os.path.exists(self.expdir): 
+			os.makedirs(self.expdir)
 
 	@property
 	def logs(self): return '%s/logs' % self.expdir
@@ -63,7 +64,7 @@ class ExpdirMonitor:
 		if not restore:
 			_clear_files = ['logs', 'checkpoint', 'snapshot', 'output']
 			for file in _clear_files:
-				subprocess.run(['rm', '-rf', os.path.join(self.expdir, file)])
+				subprocess.call(['rm', '-rf', os.path.join(self.expdir, file)])
 		init = self.load_init()
 		dataset = 'C10+' if init is None else init.get('dataset', 'C10+')
 		run_config = self.load_run_config(print_info=(not pure), dataset=dataset)

@@ -87,7 +87,8 @@ class BaseLayer:
 			param_initializer = None
 		return param_initializer
 	
-	def renew_init(self, net: BasicModel):
+	def renew_init(self, net):
+		assert(isinstance(net, BasicModel))
 		if net is None:
 			return copy.deepcopy(self._init)
 		
@@ -180,13 +181,12 @@ class ConvLayer(BaseLayer):
 		return var_list
 	
 	def get_config(self):
-		return {
+		return dict({
 			'name': 'conv',
 			'filter_num': self.filter_num,
 			'kernel_size': self.kernel_size,
 			'strides': self.strides,
-			**super(ConvLayer, self).get_config(),
-		}
+		}, **super(ConvLayer, self).get_config())
 	
 	@staticmethod
 	def set_from_config(layer_config, layer_init=None):
@@ -194,7 +194,8 @@ class ConvLayer(BaseLayer):
 		conv_layer._init = layer_init
 		return conv_layer
 	
-	def build(self, _input, net: BasicModel, store_output_op=False):
+	def build(self, _input, net, store_output_op=False):
+		assert(isinstance(net, BasicModel))
 		output = _input
 		if not self.ready:
 			return output
@@ -291,12 +292,11 @@ class FCLayer(BaseLayer):
 		return var_list
 	
 	def get_config(self):
-		return {
+		return dict({
 			'name': 'fc',
 			'units': self.units,
 			'use_bias': self.use_bias,
-			**super(FCLayer, self).get_config(),
-		}
+		}, **super(FCLayer, self).get_config())
 	
 	@staticmethod
 	def set_from_config(layer_config, layer_init=None):
@@ -304,7 +304,8 @@ class FCLayer(BaseLayer):
 		fc_layer._init = layer_init
 		return fc_layer
 	
-	def build(self, _input, net: BasicModel, store_output_op=False):
+	def build(self, _input, net, store_output_op=False):
+		assert(isinstance(net, BasicModel))
 		output = _input
 		if not self.ready:
 			return output
@@ -402,13 +403,12 @@ class PoolLayer(BaseLayer):
 		return 'P%d,%d' % (self.kernel_size, self.strides)
 		
 	def get_config(self):
-		return {
+		return dict({
 			'name': 'pool',
 			'_type': self._type,
 			'kernel_size': self.kernel_size,
 			'strides': self.strides,
-			**super(PoolLayer, self).get_config(),
-		}
+		}, **super(PoolLayer, self).get_config())
 	
 	@staticmethod
 	def set_from_config(layer_config, layer_init=None):
@@ -416,7 +416,8 @@ class PoolLayer(BaseLayer):
 		pool_layer._init = layer_init
 		return pool_layer
 	
-	def build(self, _input, net: BasicModel, store_output_op=False):
+	def build(self, _input, net, store_output_op=False):
+		assert(isinstance(net, BasicModel))
 		output = _input
 		if not self.ready:
 			return output

@@ -207,7 +207,7 @@ class CifarDataProvider(DataProvider):
 		labels_res = []
 		for fname in filenames:
 			with open(fname, 'rb') as f:
-				images_and_labels = pickle.load(f, encoding='bytes')
+				images_and_labels = pickle.load(f)
 			images = images_and_labels[b'data']
 			images = images.reshape(-1, 3, 32, 32)
 			images = images.swapaxes(1, 3).swapaxes(1, 2)

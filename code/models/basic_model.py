@@ -38,7 +38,7 @@ class BasicModel:
 	def save_path(self):
 		if self._save_path is None:
 			save_path = '%s/checkpoint' % self._path
-			os.makedirs(save_path, exist_ok=True)
+			if not os.path.exists(save_path): os.makedirs(save_path)
 			save_path = os.path.join(save_path, 'model.ckpt')
 			self._save_path = save_path
 		return self._save_path
@@ -49,7 +49,7 @@ class BasicModel:
 			logs_path = '%s/logs' % self._path
 			if self.run_config.renew_logs:
 				shutil.rmtree(logs_path, ignore_errors=True)
-			os.makedirs(logs_path, exist_ok=True)
+			if not os.path.exists(logs_path): os.makedirs(logs_path)
 			self._logs_path = logs_path
 		return self._logs_path
 	

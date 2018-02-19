@@ -32,11 +32,10 @@ class SimpleConvnetConfig:
 	def depth(self): return self.layer_cascade.depth
 	
 	def get_config(self):
-		return {
+		return dict({
 			'name': 'SimpleConvnet',
-			**self.net_config,
 			'layer_cascade': self.layer_cascade.get_config()
-		}
+		}, **self.net_config)
 
 	def copy(self):
 		net_config = SimpleConvnetConfig()
@@ -48,8 +47,9 @@ class SimpleConvnetConfig:
 			'layer_cascade': self.layer_cascade.renew_init(convnet)
 		}
 	
-	def set_standard_convnet(self, data_provider: DataProvider, conv_blocks_config, fc_block_config, weight_decay,
+	def set_standard_convnet(self, data_provider, conv_blocks_config, fc_block_config, weight_decay,
 							 drop_scheme, bn_epsilon, bn_decay, print_info=True, **kwargs):
+		assert(isinstance(data_provider, DataProvider))
 		self.net_config = {
 			'weight_decay': weight_decay,
 			'bn_epsilon': bn_epsilon,
