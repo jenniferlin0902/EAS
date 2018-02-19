@@ -43,7 +43,7 @@ class NetPool:
             if folder.startswith('#'):
                 out_file = '%s/%s/output' % (self.path, folder)
                 if not os.path.isfile(out_file):
-                    subprocess.run(['rm', '-rf', os.path.join(self.path, folder)])
+                    subprocess.call(['rm', '-rf', os.path.join(self.path, folder)])
                 else:
                     net_str = json.load(open('%s/%s/net.str' % (self.path, folder), 'r'))['net_str']
                     if self.net_str2id.get(net_str) is None:
