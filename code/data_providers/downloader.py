@@ -17,7 +17,8 @@ def download_data_url(url, download_dir):
 	file_path = os.path.join(download_dir, filename)
 	
 	if not os.path.exists(file_path):
-		os.makedirs(download_dir)
+		if not os.path.exists(download_dir):
+			os.makedirs(download_dir)
 		
 		print('Download %s to %s' % (url, file_path))
 		file_path, _ = urllib.urlretrieve(
