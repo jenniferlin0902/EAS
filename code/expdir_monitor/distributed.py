@@ -219,9 +219,10 @@ class LocalController:
             queue.put([idx, (result, used_time)])
             print('{}th task: {} is successfully executed, result is {}, using {} min.'.
                   format(idx, expdir, result, used_time))
-        except Exception:
+        except Exception as err:
             queue.put([idx, expdir])
-            print('{}th task: {} fails, with return: %s.'.format(idx, expdir, result))
+            print(err)
+            print('{}th task: {} failed.'.format(idx, expdir))
         self.occupied = False
 
     def execute(self, idx, expdir, queue):
