@@ -56,7 +56,7 @@ run_config_mnist.update({
     'n_epochs' : 300,
     'dataset': 'MNIST',
     'validation_size': 10000,
-    'validation_frequency': 1,
+    'validation_frequency': 10,
     'normalization': 'divide_255',
     'other_lr_schedule': {'type': 'cosine'},
     'shuffle': True,
