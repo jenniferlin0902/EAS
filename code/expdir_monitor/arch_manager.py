@@ -14,7 +14,8 @@ from expdir_monitor import distributed
 class NetPool:
     def __init__(self, path):
         self.path = os.path.realpath(path)
-        os.makedirs(self.path, exist_ok=True)
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
 
         self.net_str2id = {}
         self.net_id2val = {}
@@ -109,7 +110,8 @@ class ArchManager:
         self.net_pool = NetPool(net_pool_path)
 
         self.arch_path = os.path.realpath(arch_path)
-        os.makedirs(self.arch_path, exist_ok=True)
+        if not os.path.exists(self.arch_path):
+            os.makedirs(self.arch_path)
 
         self.episode = 0
         self.net_val_wrt_episode = []
@@ -162,7 +164,8 @@ class ArchManager:
 
     @staticmethod
     def prepare_folder_for_valid(net_str, net_config, run_config, exp_dir):
-        os.makedirs(exp_dir, exist_ok=True)
+        if not os.path.exists(exp_dir):
+            os.makedirs(exp_dir)
         monitor = ExpdirMonitor(exp_dir)
         json.dump(net_config.get_config(), open(monitor.net_config_path, 'w'), indent=4)
         json.dump(run_config.get_config(), open(monitor.run_config_path, 'w'), indent=4)

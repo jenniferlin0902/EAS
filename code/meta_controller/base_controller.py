@@ -9,7 +9,8 @@ import os
 class BaseController:
     def __init__(self, path):
         self.path = os.path.realpath(path)
-        os.makedirs(self.path, exist_ok=True)
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
 
     def load(self):
         raise NotImplementedError

@@ -189,7 +189,8 @@ class BasicModel:
         return mean_loss, mean_accuracy
 
     def save_config(self, save_path, print_info=True):
-        os.makedirs(save_path, exist_ok=True)
+    	if not os.path.exists(save_path):
+        	os.makedirs(save_path)
         net_save_path = os.path.join(save_path, 'net.config')
         json.dump(self.net_config.get_config(), open(net_save_path, 'w'), indent=4)
         if print_info: print('Network configs dump to %s' % save_path)
