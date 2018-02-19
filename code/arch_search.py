@@ -18,7 +18,7 @@ if args.setting == 'convnet':
     Architecture Search on Convnet
     """
     arch_search_convnet(
-        start_net_path='../start_nets/start_net_small_C10+',
+        start_net_path='../start_nets/start_net_small_C10+new',
         arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_rl_small',
         net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_rl_small',
         max_episodes=15,
