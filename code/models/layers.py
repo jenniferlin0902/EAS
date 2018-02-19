@@ -88,7 +88,6 @@ class BaseLayer(object):
         return param_initializer
 
     def renew_init(self, net):
-        assert(isinstance(net, BasicModel))
         if net is None:
             return copy.deepcopy(self._init)
 
