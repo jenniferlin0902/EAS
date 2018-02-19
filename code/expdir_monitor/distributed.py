@@ -215,8 +215,8 @@ class LocalController:
     def remote_executer(self, idx, expdir, queue):
         self.occupied = True
         print('{}: {}'.format(self.gpuid, expdir))
+        used_time, result = self.run(expdir)
         try:
-            used_time, result = self.run(expdir)
             queue.put([idx, (result, used_time)])
             print('{}th task: {} is successfully executed, result is {}, using {} min.'.
                   format(idx, expdir, result, used_time))
