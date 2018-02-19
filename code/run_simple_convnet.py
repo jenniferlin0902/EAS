@@ -8,21 +8,21 @@ import copy
 
 
 run_config_cifar = {
-	'batch_size': 64,
-	'n_epochs': 300,
-	'init_lr': 0.1,
-	'reduce_lr_epochs': [0.5, 0.75],  # epochs * 0.5, epochs * 0.75
-	'reduce_lr_factors': [10, 10],
-	'opt_config': ['momentum', {'momentum': 0.9, 'use_nesterov': True}],
-	'dataset': 'C10+',  # choices = [C10, C10+, C100, C100+]
-	'validation_size': 10000,  # None or int
-	'validation_frequency': 10,
-	'shuffle': 'every_epoch',  # None, once_prior_train, every_epoch
-	'normalization': 'by_channels',  # None, divide_256, divide_255, by_channels
-	'should_save_logs': True,
-	'should_save_model': True,
-	'renew_logs': True,
-	'other_lr_schedule': {'type': 'cosine'},  # None, or cosine
+    'batch_size': 64,
+    'n_epochs': 300,
+    'init_lr': 0.1,
+    'reduce_lr_epochs': [0.5, 0.75],  # epochs * 0.5, epochs * 0.75
+    'reduce_lr_factors': [10, 10],
+    'opt_config': ['momentum', {'momentum': 0.9, 'use_nesterov': True}],
+    'dataset': 'C10+',  # choices = [C10, C10+, C100, C100+]
+    'validation_size': 10000,  # None or int
+    'validation_frequency': 10,
+    'shuffle': 'every_epoch',  # None, once_prior_train, every_epoch
+    'normalization': 'by_channels',  # None, divide_256, divide_255, by_channels
+    'should_save_logs': True,
+    'should_save_model': True,
+    'renew_logs': True,
+    'other_lr_schedule': {'type': 'cosine'},  # None, or cosine
 }
 
 standard_net_config = {
@@ -41,14 +41,14 @@ standard_net_config = {
 
 run_config_svhn = copy.deepcopy(run_config_cifar)
 run_config_svhn.update({
-	'n_epochs': 40,
-	'dataset': 'SVHN',
-	'validation_size': 10000,
-	'validation_frequency': 1,
-	'normalization': 'divide_255',
-	'other_lr_schedule': {'type': 'cosine'},
-	'include_extra': False,
-	'shuffle': True,
+    'n_epochs': 40,
+    'dataset': 'SVHN',
+    'validation_size': 10000,
+    'validation_frequency': 1,
+    'normalization': 'divide_255',
+    'other_lr_schedule': {'type': 'cosine'},
+    'include_extra': False,
+    'shuffle': True,
 })
 
 run_config_mnist = copy.deepcopy(run_config_cifar)
