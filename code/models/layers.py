@@ -177,7 +177,7 @@ class ConvLayer(BaseLayer):
     @property
     def variable_list(self):
         var_list = {'kernel': 'kernel:0'}
-        var_list.update(super().variable_list)
+        var_list.update(super(type(ConvLayer), self).variable_list)
         return var_list
 
     def get_config(self):
