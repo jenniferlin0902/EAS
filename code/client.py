@@ -9,21 +9,21 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 def run(expdir):
-	start_time = time.time()
-	expdir_monitor = ExpdirMonitor(expdir)
-	valid_performance = expdir_monitor.run(pure=True, restore=False)
-	end_time = time.time()
-	print('running time: %s' % (end_time - start_time))
-	print('valid performance: %s' % valid_performance)
+    start_time = time.time()
+    expdir_monitor = ExpdirMonitor(expdir)
+    valid_performance = expdir_monitor.run(pure=True, restore=False)
+    end_time = time.time()
+    print('running time: %s' % (end_time - start_time))
+    print('valid performance: %s' % valid_performance)
 
 
 def main():
-	expdir = input().strip('\n')
-	run(expdir)
+    expdir = input().strip('\n')
+    run(expdir)
 
 
 if __name__ == "__main__":
-	try:
-		main()
-	except KeyboardInterrupt:
-		pass
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
