@@ -8,7 +8,7 @@ import json
 import pickle
 
 
-class BasicModel:
+class BasicModel(object):
     def __init__(self, path, data_provider, run_config, net_config, pure=False, only_forward=False):
         if only_forward: pure = True
         self.graph = tf.Graph()

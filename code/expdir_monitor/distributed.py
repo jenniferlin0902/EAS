@@ -1,3 +1,4 @@
+from expdir_monitor import ExpdirMonitor
 from subprocess import Popen, PIPE
 from threading import Thread, Lock
 from Queue import Queue
@@ -11,7 +12,8 @@ max_running_machine = 5
 
 _max_used_mem = 0.3
 _max_used_gpu = 0.3
-config_file = 'server_config'
+config_file = 'gpu_list'
+# config_file = 'server_config'
 
 
 class GpuChecker:
@@ -141,7 +143,6 @@ class RemoteController:
             thr.start()
             self._on_running = None
 
-
 class ClusterController:
     def __init__(self, config_list):
         self.cluster = [RemoteController(*config) for config in config_list]
@@ -175,10 +176,102 @@ class ClusterController:
         self.choice(queue).execute(idx, expdir, queue)
 
 
+class LocalController:
+    def __init__(self, gpuid):
+        self.gpuid = gpuid
+
+        self._lock = Lock()
+        self._occupied = False
+        self._on_running = None
+
+    @property
+    def occupied(self):
+        with self._lock:
+            return self._occupied
+
+    @occupied.setter
+    def occupied(self, val):
+        assert isinstance(val, bool), 'Occupied must be True or False, but {} received.'.format(val)
+        with self._lock:
+            self._occupied = val
+
+    def run(self, expdir):
+        start_time = time.time()
+        expdir_monitor = ExpdirMonitor(expdir)
+        valid_performance = expdir_monitor.run(pure=True, restore=False)
+        end_time = time.time()
+        print('running time: %s' % (end_time - start_time))
+        print('valid performance: %s' % valid_performance)
+        return (end_time - start_time), valid_performance
+
+    def check_on(self, queue):
+        if not self.gpu_checker.is_on():
+            if self._on_running is not None:
+                queue.put(self._on_running)
+                self._on_running = None
+                print('Remote Error.')
+            return False
+        return True
+
+    def remote_executer(self, idx, expdir, queue):
+        self.occupied = True
+        print('{}: {}'.format(self.gpuid, expdir))
+        try:
+            used_time, result = self.run(expdir)
+            queue.put([idx, (result, used_time)])
+            print('{}th task: {} is successfully executed, result is {}, using {} min.'.
+                  format(idx, expdir, result, used_time))
+        except Exception:
+            queue.put([idx, expdir])
+            print('{}th task: {} fails, with return: %s.'.format(idx, expdir, result))
+        self.occupied = False
+
+    def execute(self, idx, expdir, queue):
+        if self.occupied:
+            queue.put([idx, expdir])
+        else:
+            self._on_running = [idx, expdir]
+            thr = Thread(target=self.remote_executer, args=(idx, expdir, queue))
+            thr.start()
+            self._on_running = None
+
+class LocalClusterController:
+    def __init__(self, gpu_list):
+        self.cluster = [LocalController(gpuid) for gpuid in gpu_list]
+        self._pt = 0
+
+    def choice(self, queue):
+        remotes_available, occupy_num = self.get_available(queue)
+        while occupy_num >= max_running_machine:
+            sleep(0.5)
+            remotes_available, occupy_num = self.get_available(queue)
+        while not remotes_available[self._pt]:
+            self._pt = (self._pt + 1) % len(self.cluster)
+        choose_remote = self.cluster[self._pt]
+        self._pt = (self._pt + 1) % len(self.cluster)
+        return choose_remote
+        # return random.choice(self.cluster)
+
+    def get_available(self, queue):
+        remotes_available = [False] * len(self.cluster)
+        occupy_num = len(self.cluster)
+        for _i, remote in enumerate(self.cluster):
+            if not remote.check_on(queue):
+                occupy_num -= 1
+                continue
+            if not remote.occupied:
+                remotes_available[_i] = True
+                occupy_num -= 1
+        return remotes_available, occupy_num
+
+    def execute(self, idx, expdir, queue):
+        self.choice(queue).execute(idx, expdir, queue)
+
+
 def run_tasks(config_list, expdir_list):
     print "config_list", config_list
     print "expdir_list", expdir_list
-    controller = ClusterController(config_list)
+    controller = LocalClusterController(config_list)
     result_list = [None for _ in expdir_list]
 
     queue = Queue()
