@@ -1,5 +1,5 @@
 from expdir_monitor import ExpdirMonitor
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, call
 from threading import Thread, Lock
 from Queue import Queue
 from time import sleep
@@ -198,7 +198,7 @@ class LocalController:
 
     def run(self, expdir):
         start_time = time.time()
-        expdir_monitor = ExpdirMonitor(expdir)
+        expdir_monitor = ExpdirMonitor(expdir, gpu=self.gpuid)
         valid_performance = expdir_monitor.run(pure=True, restore=False)
         end_time = time.time()
         print('running time: %s' % (end_time - start_time))

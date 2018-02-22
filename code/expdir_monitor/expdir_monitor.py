@@ -7,8 +7,9 @@ import pickle
 
 
 class ExpdirMonitor:
-    def __init__(self, expdir):
+    def __init__(self, expdir, gpu=None):
         self.expdir = os.path.realpath(expdir)
+        self.gpu = gpu
         if not os.path.exists(self.expdir):
             os.makedirs(self.expdir)
 
@@ -74,7 +75,7 @@ class ExpdirMonitor:
 
         data_provider = get_data_provider_by_name(run_config.dataset, run_config.get_config())
         net_config, model_name = self.load_net_config(init, print_info=(not pure))
-        model = get_model_by_name(model_name)(self.expdir, data_provider, run_config, net_config, pure=pure)
+        model = get_model_by_name(model_name)(self.expdir, data_provider, run_config, net_config, pure=pure, gpu=self.gpu)
         start_epoch = 1
         if restore:
             model.load_model()

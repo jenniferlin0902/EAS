@@ -4,12 +4,13 @@ import tensorflow as tf
 import numpy as np
 import time
 from datetime import timedelta
+from tensorflow.python.client import device_lib
 import json
 import pickle
 
 
 class BasicModel(object):
-    def __init__(self, path, data_provider, run_config, net_config, pure=False, only_forward=False):
+    def __init__(self, path, data_provider, run_config, net_config, pure=False, only_forward=False, gpu=None):
         if only_forward: pure = True
         self.graph = tf.Graph()
 
@@ -25,7 +26,14 @@ class BasicModel(object):
         self.batches_step = 0
 
         self.cross_entropy, self.train_step, self.accuracy = None, None, None
-        with self.graph.as_default():
+        if gpu is not None:
+            self.gpu = gpu
+        else:
+            local_device_protos = device_lib.list_local_devices()
+            gpus = [x.name for x in local_device_protos if x.device_type == 'GPU']
+            self.gpu = gpus[0] if len(gpus) > 0 else local_device_protos[0].name
+
+        with self.graph.as_default(), tf.device(self.gpu):
             self._define_inputs()
             self._build_graph(only_forward=only_forward)
             self.global_variables_initializer = tf.global_variables_initializer()
