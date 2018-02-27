@@ -1,4 +1,4 @@
-from meta_controller.base_controller import WiderActorNet, DeeperActorNet, EncoderNet, BaseController
+from meta_controller.base_controller import WiderActorNet, DeeperActorNet, EncoderNet, BaseController, embedding
 import tensorflow as tf
 import os
 from tensorflow.python.ops import array_ops
@@ -23,7 +23,7 @@ class RLNet2NetController(BaseController):
             print('No model files in ' + '%s/model.ckpt.index' % self.path)
 
     def __init__(self, path, entropy_penalty,
-                 encoder, wider_actor, deeper_actor, opt_config):
+                 encoder, wider_actor, deeper_actor, opt_config, rl_config):
         assert(isinstance(encoder, EncoderNet))
         assert(isinstance(wider_actor, WiderActorNet))
         assert(isinstance(deeper_actor, DeeperActorNet))
@@ -34,6 +34,7 @@ class RLNet2NetController(BaseController):
         self.wider_actor = wider_actor
         self.deeper_actor = deeper_actor
         self.opt_config = opt_config
+        self.rl_config = rl_config
 
         self.graph = tf.Graph()
         self.obj, self.train_step = None, None
@@ -86,6 +87,10 @@ class RLNet2NetController(BaseController):
             shape=[],
             name='has_deeper',
         )
+        self._define_subclass_input()
+
+    def _define_subclass_input(self):
+        raise NotImplementedError
 
     def update_controller(self, learning_rate, wider_seg_deeper, wider_decision_trajectory, wider_decision_mask,
                           deeper_decision_trajectory, deeper_decison_mask, reward, block_layer_num, input_seq, seq_len):
@@ -104,6 +109,7 @@ class RLNet2NetController(BaseController):
             self.encoder.seq_len: seq_len,
             self.has_deeper: has_deeper,
         }
+
         self.sess.run(self.train_step, feed_dict=feed_dict)
 
     def build_forward(self):
@@ -126,7 +132,11 @@ class RLNet2NetController(BaseController):
             feed2deeper_state = encoder_state[self.wider_seg_deeper:]
         else:
             raise ValueError
-
+        self.wider_input = feed2wider_output
+        self.deeper_input = feed2deeper_output
+        self.inputs = feed2wider_output + feed2deeper_output
+        # TODO not sure what's the difference between output /state  and which one
+        # to use to estimate baseline. maybe we can use both???
         self.wider_actor.build_forward(feed2wider_output)
         self.deeper_actor.build_forward(feed2deeper_output, feed2deeper_state, self.is_training,
                                         self.deeper_decision_trajectory)
@@ -190,6 +200,9 @@ class RLNet2NetController(BaseController):
 
 
 class ReinforceNet2NetController(RLNet2NetController):
+    def _define_subclass_input(self):
+        pass
+
     def build_training_process(self):
         wider_side_obj, wider_entropy = tf.cond(
             tf.greater(self.wider_seg_deeper, 0),
@@ -208,6 +221,7 @@ class ReinforceNet2NetController(RLNet2NetController):
         entropy_term /= tf.cast(batch_size, tf.float32)
 
         optimizer = BasicModel.build_optimizer(self.learning_rate, self.opt_config[0], self.opt_config[1])
+        print "in buuild, reward = {}".format(self.reward)
         self.train_step = optimizer.minimize(- self.obj - self.entropy_penalty * entropy_term)
 
     def get_wider_side_obj(self):

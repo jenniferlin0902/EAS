@@ -94,7 +94,7 @@ def seq_len(sequence):
 
 
 class EncoderNet:
-    def __init__(self, num_steps, vocab, embedding_dim, rnn_units, rnn_type='bi_lstm', rnn_layers=1):
+    def __init__(self, num_steps, vocab, embedding_dim, rnn_units, rnn_type='bi_lstm', rnn_layers=1, name_prefix=""):
         self.num_steps = num_steps
         self.vocab = vocab
         self.embedding_dim = embedding_dim
@@ -102,7 +102,7 @@ class EncoderNet:
         self.rnn_units = rnn_units
         self.rnn_type = rnn_type
         self.rnn_layers = rnn_layers
-
+        self.name_prefix = name_prefix
         # placeholder
         self.seq_len, self.input_seq = None, None
         # op
@@ -133,7 +133,7 @@ class EncoderNet:
         self._define_input()
 
         output = self.input_seq
-        output = embedding(output, self.vocab.size, self.embedding_dim, name='layer_embedding')
+        output = embedding(output, self.vocab.size, self.embedding_dim, name=self.name_prefix + 'layer_embedding')
         input_dim = self.embedding_dim
 
         # Prepare data shape to match rnn function requirements
@@ -148,7 +148,8 @@ class EncoderNet:
             fw_cell = build_cell(self.rnn_units, self.cell_type, self.rnn_layers)
             bw_cell = build_cell(self.rnn_units, self.cell_type, self.rnn_layers)
             output, state_fw, state_bw = rnn.static_bidirectional_rnn(
-                fw_cell, bw_cell, output, dtype=tf.float32, sequence_length=self.seq_len, scope='encoder')
+                fw_cell, bw_cell, output, dtype=tf.float32, sequence_length=self.seq_len, scope=self.name_prefix + 'encoder')
+            #TODO seperate variable by scope not by name?
 
             if isinstance(state_fw, tf.contrib.rnn.LSTMStateTuple):
                 encoder_state_c = tf.concat([state_fw.c, state_bw.c], axis=1, name='bidirectional_concat_c')
@@ -183,8 +184,9 @@ class WiderActorNet:
 
     def build_forward(self, _input):
         output = _input  # [batch_size, num_steps, rnn_units]
-        feature_dim = int(output.get_shape()[2])  # rnn_units
-        output = tf.reshape(output, [-1, feature_dim])  # [batch_size * num_steps, rnn_units]
+
+        self.feature_dim = int(output.get_shape()[2])  # rnn_units
+        output = tf.reshape(output, [-1, self.feature_dim])  # [batch_size * num_steps, rnn_units]
         final_activation = 'sigmoid' if self.out_dim == 1 else 'softmax'
         if self.net_type == 'simple':
             net_config = [] if self.net_config is None else self.net_config
