@@ -214,13 +214,13 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         'baseline': True,
         'baseline_config': {
             'size': 16,
-            'n_layer': 3,  # n layer, size
+            'n_layer': 3,
             'embedding_dim': encoder_config['embedding_dim'],
             'vocab': Vocabulary(layer_token_list),
             'num_steps': 50,
-            'rnn_units': 50,
-            'rnn_type': 'bi_lstm',
-            'rnn_layers': 1,
+            #'rnn_units': 50,
+            #'rnn_type': 'bi_lstm',
+            #'rnn_layers': 1,
         }
 
     }
@@ -233,14 +233,14 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
     # episode config
     episode_config = {
-        'batch_size': 10,
-        'wider_action_num': 4,
-        'deeper_action_num': 5,
+        'batch_size': 2,
+        'wider_action_num': 2,
+        'deeper_action_num': 2,
     }
 
     # arch search run config
     arch_search_run_config = {
-        'n_epochs': 100,
+        'n_epochs': 1,
         'init_lr': 0.02,
         'validation_size': 5000,
         'other_lr_schedule': {'type': 'cosine'},
@@ -377,9 +377,10 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         print "Reward shape = {}".format(rewards)
         # rewards = repeat (rewards for every step) = shape(steps per episode * batch size)
         # update the agent
+        print "Encoder Input seq = {}".format(encoder_seq_len)
         if not random:
             if rl_config['baseline']:
-                meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards)
+                meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
                 advantages = meta_controller.calculate_advantage(rewards, encoder_input_seq, encoder_seq_len)
                 rewards = advantages
 

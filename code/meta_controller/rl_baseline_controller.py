@@ -1,4 +1,4 @@
-from meta_controller.base_controller import EncoderNet
+from meta_controller.base_controller import EncoderNet, embedding
 from meta_controller.rl_controller import RLNet2NetController
 import tensorflow as tf
 import os
@@ -16,15 +16,21 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
             shape=[None],
             name='advantages',
         )
+        self.baseline_input_seq = tf.placeholder(
+            tf.int32,
+            [None, self.rl_config["baseline_config"]["num_steps"]],
+            'baseline_input_seq'
+        )  # input sequence, shape = [batch_size, num_steps]
 
     def calculate_advantage(self, reward, input_seq, input_len):
         # calculate advantage value for one set of input
         baseline = self.sess.run(self.baseline,
                                  feed_dict={self.reward: reward,
-                                            self.encoder.input_seq: input_seq,
-                                            self.encoder.input_len: input_len})
+                                            self.baseline_input_seq: input_seq})
+
 
         adv_val = reward-baseline
+        print "Calculating adv, adv_val shpae = {}, baselin shape = {}".format(adv_val.shape, baseline.shape)
         mean = np.mean(adv_val)
         std = np.std(adv_val)
         adv_val = (adv_val-mean)/std
@@ -34,17 +40,26 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
         # add target place holder
         #self.baseline_input_placeholder = tf.placeholder(dtype=tf.float32, shape=(None, self.num_steps, self.rnn_units))
         # first build embedding layer to feed into baseline FC network
+        embedding_dim = self.rl_config['baseline_config']['embedding_dim']
+        num_steps = self.rl_config['baseline_config']['num_steps']
         with tf.variable_scope("rl_baseline"):
-            self.baseline_encoder = EncoderNet(self.rl_config['baseline_config']['num_steps'],
-                                               self.rl_config['baseline_config']['vocab'],
-                                               self.rl_config['baseline_config']['embedding_dim'],
-                                               self.rl_config['baseline_config']['rnn_units'],
-                                               self.rl_config['baseline_config']['rnn_type'],
-                                               self.rl_config['baseline_config']['rnn_layers'],name_prefix="rl_baseline")
-        encoder_output, encoder_state = self.baseline_encoder.build()
+            out = self.baseline_input_seq
+            out = embedding(out, self.rl_config["baseline_config"]['vocab'].size,
+                            self.rl_config['baseline_config']['embedding_dim'],
+                            name='baseline_embedding')
+            input_dim = embedding_dim
 
+            # Prepare data shape to match rnn function requirements
+            # Current data input shape: [batch_size, num_steps, input_dim]
+            # Required shape: 'num_steps' tensors list of shape [batch_size, input_dim]
+            out = tf.transpose(out, [1, 0, 2])
+            out = tf.reshape(out, [-1, input_dim])
+            out = tf.split(out, num_steps, 0)[-1] # take the last step as feature
+
+        # TODO understand the dimenstion for encoder output
         # TODO figure out if we should feed in encoder state or not, don't feed in for now
-        out = encoder_output
+        print "Building baseline, encoder output = {}".format(out)
+        #out = tf.reshape(encoder_output, [-1, int(encoder_output.get_shape()[2])]) #[batch_size * num_steps, rnn_units
         with tf.variable_scope("rl_baseline"):
             for i in range(self.rl_config["baseline_config"]['n_layer']):
                 out = tf.contrib.layers.fully_connected(out,
@@ -55,16 +70,18 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
             # build output layer
             out = tf.contrib.layers.fully_connected(out, 1, activation_fn=None)
         self.baseline = tf.squeeze(out)
+        print "Building baseline, baseline = {}".format(self.baseline)
         loss = tf.losses.mean_squared_error(self.baseline, self.reward)
         adam = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         # use the same learning rate as rl algorithm
         self.update_baseline_op = adam.minimize(loss=loss)
 
-    def update_baseline_network(self, input_seq, seq_len, rewards):
+    def update_baseline_network(self, input_seq, seq_len, rewards, learning_rate):
         self.sess.run(self.update_baseline_op,
-                      feed_dict={self.baseline_encoder.input_seq: input_seq,
+                      feed_dict={self.baseline_input_seq: input_seq,
                                  self.reward : rewards,
-                                 self.baseline_encoder.seq_len: seq_len})
+                                 #self.baseline_seq_len: seq_len,
+                                 self.learning_rate: learning_rate})
 
     def build_training_process(self):
         # if self.wider_seg_deepr > 0, then get wide_side_obj, else wider_entropy = 0
