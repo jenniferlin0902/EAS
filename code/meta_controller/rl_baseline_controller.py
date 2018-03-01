@@ -88,7 +88,7 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
         )
         self.baseline_input_seq = tf.placeholder(
             tf.int32,
-            [None, self.rl_config["baseline_config"]["num_steps"]],
+            [None, self.rl_config["num_steps"]],
             'baseline_input_seq'
         )  # input sequence, shape = [batch_size, num_steps]
 
