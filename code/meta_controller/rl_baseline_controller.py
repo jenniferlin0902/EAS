@@ -171,7 +171,7 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
         # add baseline to training step
         if self.rl_config is not None:
             self.build_baseline_network(**self.rl_config)
-            self.train_step.append(self.update_baseline_op)
+            # self.train_step.append(self.update_baseline_op)
 
     def get_wider_entropy_with_baseline(self):
         wider_entropy = -tf.multiply(tf.log(self.wider_actor.probs), self.advantages)
