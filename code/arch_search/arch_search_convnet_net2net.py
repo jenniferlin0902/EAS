@@ -384,7 +384,9 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         print "Reward shape = {}".format(rewards)
         # rewards = repeat (rewards for every step) = shape(steps per episode * batch size)
         # update the agent
-        print "Encoder Input seq = {}".format(encoder_seq_len)
+        print "Encoder Input seq len = {}".format(len(encoder_input_seq))
+        print "Encoder Input seq = {}".format(encoder_input_seq)
+        return
         if not random:
             if baseline:
                 meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
