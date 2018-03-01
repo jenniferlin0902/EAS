@@ -33,10 +33,11 @@ class BasicModel(object):
             gpus = [x.name for x in local_device_protos if x.device_type == 'GPU']
             self.gpu = gpus[0] if len(gpus) > 0 else local_device_protos[0].name
 
-        with self.graph.as_default(), tf.device(self.gpu):
-            self._define_inputs()
-            self._build_graph(only_forward=only_forward)
-            self.global_variables_initializer = tf.global_variables_initializer()
+        with self.graph.as_default():
+            with tf.device(self.gpu):
+                self._define_inputs()
+                self._build_graph(only_forward=only_forward)
+                self.global_variables_initializer = tf.global_variables_initializer()
             if not pure:
                 self._count_trainable_params()
                 self.saver = tf.train.Saver()

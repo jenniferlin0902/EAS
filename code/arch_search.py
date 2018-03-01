@@ -18,10 +18,10 @@ if args.setting == 'convnet':
     Architecture Search on Convnet
     """
     arch_search_convnet(
-        start_net_path='../start_nets/start_net_convnet_small_C10+',
-        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_rl_small_2',
-        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_rl_small_2',
-        max_episodes=30,
+        start_net_path='../start_nets/start_net_convnet_small_C10+_round2',
+        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_rl_small_2_t',
+        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_rl_small_2_round2_t',
+        max_episodes=45,
         random=False,
     )
 elif args.setting == 'densenet':

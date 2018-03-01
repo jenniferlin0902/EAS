@@ -199,7 +199,7 @@ class LocalController:
     def run(self, expdir):
         start_time = time.time()
         expdir_monitor = ExpdirMonitor(expdir, gpu=self.gpuid)
-        valid_performance = expdir_monitor.run(pure=True, restore=False)
+        valid_performance = expdir_monitor.run(pure=False, restore=False)
         end_time = time.time()
         print('running time: %s' % (end_time - start_time))
         print('valid performance: %s' % valid_performance)
@@ -218,7 +218,7 @@ class LocalController:
         try:
             used_time, result = self.run(expdir)
             queue.put([idx, (round(result, 5), used_time)])
-            print('{}th task: {} is successfully executed, result is {}, using {} min.'.
+            print('{}th task: {} is successfully executed, result is {}, using {} secs.'.
                   format(idx, expdir, result, used_time))
         except Exception as err:
             queue.put([idx, expdir])
@@ -268,8 +268,6 @@ class LocalClusterController:
 
 
 def run_tasks(config_list, expdir_list):
-    print "config_list", config_list
-    print "expdir_list", expdir_list
     controller = LocalClusterController(config_list)
     result_list = [None for _ in expdir_list]
 
