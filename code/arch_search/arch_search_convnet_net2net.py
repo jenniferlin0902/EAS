@@ -210,20 +210,27 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
     opt_config = ['adam', {}]
 
     # rl-baseline controller config
-    rl_config = {
-        'baseline': True,
-        'baseline_config': {
-            'size': 16,
-            'n_layer': 3,
-            'embedding_dim': encoder_config['embedding_dim'],
-            'vocab': Vocabulary(layer_token_list),
-            'num_steps': 50,
-            #'rnn_units': 50,
-            #'rnn_type': 'bi_lstm',
-            #'rnn_layers': 1,
-        }
-
+    baseline_config = {
+        'size': 256,
+        'n_layer': 3,
+        'embedding_dim': encoder_config['embedding_dim'],
+        'vocab': Vocabulary(layer_token_list),
+        'num_steps': 50,
     }
+    # rl_config = {
+    #     'baseline': True,
+    #     'baseline_config': {
+    #         'size': 16,
+    #         'n_layer': 3,
+    #         'embedding_dim': encoder_config['embedding_dim'],
+    #         'vocab': Vocabulary(layer_token_list),
+    #         'num_steps': 50,
+    #         #'rnn_units': 50,
+    #         #'rnn_type': 'bi_lstm',
+    #         #'rnn_layers': 1,
+    #     }
+
+    # }
 
     # net2net noise config
     noise_config = {
@@ -265,10 +272,10 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
     if baseline:
         meta_controller = ReinforceBaselineNet2NetController(arch_manager.meta_controller_path, entropy_penalty,
-                                                     encoder, wider_actor, deeper_actor, opt_config, rl_config)
+                                                     encoder, wider_actor, deeper_actor, opt_config, baseline_config)
     else:
         meta_controller = ReinforceNet2NetController(arch_manager.meta_controller_path, entropy_penalty,
-                                                 encoder, wider_actor, deeper_actor, opt_config, rl_config)
+                                                 encoder, wider_actor, deeper_actor, opt_config)
     meta_controller.load()
 
     for _i in range(arch_manager.episode + 1, max_episodes + 1):
@@ -379,7 +386,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         # update the agent
         print "Encoder Input seq = {}".format(encoder_seq_len)
         if not random:
-            if rl_config['baseline']:
+            if baseline:
                 meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
                 advantages = meta_controller.calculate_advantage(rewards, encoder_input_seq, encoder_seq_len)
                 rewards = advantages
