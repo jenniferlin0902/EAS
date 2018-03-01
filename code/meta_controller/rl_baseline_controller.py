@@ -127,8 +127,8 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
         # print "Building baseline, encoder output = {}".format(out)
         #out = tf.reshape(encoder_output, [-1, int(encoder_output.get_shape()[2])]) #[batch_size * num_steps, rnn_units
         with tf.variable_scope("rl_baseline"):
-            for i in range(self.n_layer):
-                out = tf.contrib.layers.fully_connected(out, self.size, scope="rl_baseline_fc_{}".format(i))
+            for i in range(n_layer):
+                out = tf.contrib.layers.fully_connected(out, size, scope="rl_baseline_fc_{}".format(i))
                 # use relu, xivar initialization by default
                 # TODO do we need batch norm? prob not, look into if the og one has batch norm
             # build output layer
