@@ -393,6 +393,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 advantages = meta_controller.calculate_advantage(rewards, encoder_input_seq, encoder_seq_len)
                 rewards = advantages
 
+            print "Encoder Input seq = {}".format(encoder_input_seq)
             meta_controller.update_controller(learning_rate, wider_seg_deeper, wider_decision_trajectory,
                                               wider_decision_mask, deeper_decision_trajectory, deeper_decision_mask,
                                               rewards, deeper_block_layer_num, encoder_input_seq, encoder_seq_len)
