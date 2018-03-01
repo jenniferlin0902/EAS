@@ -170,7 +170,7 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
         self.train_step = [optimizer.minimize(- self.obj - self.entropy_penalty * entropy_term)]
         # add baseline to training step
         if self.rl_config is not None:
-            self.build_baseline_network(**rl_config)
+            self.build_baseline_network(**self.rl_config)
             self.train_step.append(self.update_baseline_op)
 
     def get_wider_entropy_with_baseline(self):
