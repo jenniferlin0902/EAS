@@ -247,7 +247,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
     # arch search run config
     arch_search_run_config = {
-        'n_epochs': 1,
+        'n_epochs': 2,
         'init_lr': 0.02,
         'validation_size': 5000,
         'other_lr_schedule': {'type': 'cosine'},
