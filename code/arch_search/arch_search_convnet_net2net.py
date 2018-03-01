@@ -386,7 +386,6 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         # update the agent
         print "Encoder Input seq len = {}".format(len(encoder_input_seq))
         print "Encoder Input seq = {}".format(encoder_input_seq)
-        return
         if not random:
             if baseline:
                 meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
@@ -394,6 +393,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 rewards = advantages
 
             print "Encoder Input seq = {}".format(encoder_input_seq)
+            return
             meta_controller.update_controller(learning_rate, wider_seg_deeper, wider_decision_trajectory,
                                               wider_decision_mask, deeper_decision_trajectory, deeper_decision_mask,
                                               rewards, deeper_block_layer_num, encoder_input_seq, encoder_seq_len)
