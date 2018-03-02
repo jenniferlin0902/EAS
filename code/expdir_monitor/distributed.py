@@ -199,7 +199,7 @@ class LocalController:
     def run(self, expdir):
         start_time = time.time()
         expdir_monitor = ExpdirMonitor(expdir, gpu=self.gpuid)
-        valid_performance = expdir_monitor.run(pure=False, restore=False)
+        valid_performance = expdir_monitor.run(pure=True, restore=False)
         end_time = time.time()
         return (end_time - start_time), valid_performance
 
