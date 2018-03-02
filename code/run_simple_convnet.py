@@ -27,12 +27,12 @@ run_config_cifar = {
 
 standard_net_config = {
     'conv_blocks_config': [
-        [1, 3, 4],
-        [1, 3, 4],
-        [1, 3, 4],
-        [1, 3, 4],
+        [1, 3, 128],
+        [1, 3, 128],
+        [1, 3, 256],
+        [1, 3, 256],
     ],
-    'fc_block_config': [8],
+    'fc_block_config': [512, 512],
     'weight_decay': 1e-4,
     'drop_scheme': {'type': 'conv', 'conv_drop': 0.8, 'pool_drop': 0.7, 'fc_drop': 0.5},
     'bn_epsilon': 1e-5,

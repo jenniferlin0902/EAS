@@ -168,10 +168,10 @@ def apply_deeper_decision(deeper_decision, net_configs, kernel_size_list, noise)
 
 
 def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max_episodes, random=False, baseline=True):
-    filter_num_list = [_i for _i in range(4, 44, 4)]
-    units_num_list = [_i for _i in range(8, 88, 8)]
-    # filter_num_list = [16, 32, 64, 96, 128, 192, 256, 320, 384, 448, 512, 576, 640]
-    # units_num_list = [64, 128, 256, 384, 512, 640, 768, 896, 1024, 1152, 1280]
+    # filter_num_list = [_i for _i in range(4, 44, 4)]
+    # units_num_list = [_i for _i in range(8, 88, 8)]
+    filter_num_list = [16, 32, 64, 96, 128, 192, 256, 320, 384, 448, 512, 576, 640]
+    units_num_list = [64, 128, 256, 384, 512, 640, 768, 896, 1024, 1152, 1280]
     kernel_size_list = [1, 3, 5]
 
     # encoder config
