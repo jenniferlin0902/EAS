@@ -201,8 +201,6 @@ class LocalController:
         expdir_monitor = ExpdirMonitor(expdir, gpu=self.gpuid)
         valid_performance = expdir_monitor.run(pure=False, restore=False)
         end_time = time.time()
-        print('running time: %s' % (end_time - start_time))
-        print('valid performance: %s' % valid_performance)
         return (end_time - start_time), valid_performance
 
     def check_on(self, queue):

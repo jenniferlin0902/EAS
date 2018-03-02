@@ -94,7 +94,7 @@ def seq_len(sequence):
 
 
 class EncoderNet:
-    def __init__(self, num_steps, vocab, embedding_dim, rnn_units, rnn_type='bi_lstm', rnn_layers=1):
+    def __init__(self, num_steps, vocab, embedding_dim, rnn_units, rnn_type='bi_lstm', rnn_layers=1, name_prefix=""):
         self.num_steps = num_steps
         self.vocab = vocab
         self.embedding_dim = embedding_dim
@@ -102,7 +102,7 @@ class EncoderNet:
         self.rnn_units = rnn_units
         self.rnn_type = rnn_type
         self.rnn_layers = rnn_layers
-
+        self.name_prefix = name_prefix
         # placeholder
         self.seq_len, self.input_seq = None, None
         # op
@@ -133,7 +133,7 @@ class EncoderNet:
         self._define_input()
 
         output = self.input_seq
-        output = embedding(output, self.vocab.size, self.embedding_dim, name='layer_embedding')
+        output = embedding(output, self.vocab.size, self.embedding_dim, name=self.name_prefix + 'layer_embedding')
         input_dim = self.embedding_dim
 
         # Prepare data shape to match rnn function requirements
@@ -148,7 +148,8 @@ class EncoderNet:
             fw_cell = build_cell(self.rnn_units, self.cell_type, self.rnn_layers)
             bw_cell = build_cell(self.rnn_units, self.cell_type, self.rnn_layers)
             output, state_fw, state_bw = rnn.static_bidirectional_rnn(
-                fw_cell, bw_cell, output, dtype=tf.float32, sequence_length=self.seq_len, scope='encoder')
+                fw_cell, bw_cell, output, dtype=tf.float32, sequence_length=self.seq_len, scope=self.name_prefix + 'encoder')
+            #TODO seperate variable by scope not by name?
 
             if isinstance(state_fw, tf.contrib.rnn.LSTMStateTuple):
                 encoder_state_c = tf.concat([state_fw.c, state_bw.c], axis=1, name='bidirectional_concat_c')
@@ -170,6 +171,86 @@ class EncoderNet:
         self.encoder_state = state
         return output, state
 
+class BaselineNet(object):
+    def __init__(self, fc_size, n_fc_layers, num_steps, vocab, embedding_dim, rnn_units, rnn_type='bi_lstm', rnn_layers=1, name_prefix="baseline"):
+        self.fc_size = fc_size
+        self.n_fc_layers = n_fc_layers
+        self.num_steps = num_steps
+        self.vocab = vocab
+        self.embedding_dim = embedding_dim
+
+        self.rnn_units = rnn_units
+        self.rnn_type = rnn_type
+        self.rnn_layers = rnn_layers
+        self.name_prefix = name_prefix
+        # placeholder
+        self.seq_len, self.input_seq = None, None
+        # op
+        self.encoder_output, self.encoder_state = None, None
+
+    @property
+    def bidirectional(self):
+        return self.rnn_type.startswith('bi')
+
+    @property
+    def cell_type(self):
+        return self.rnn_type.split('_')[-1]
+
+    def _define_input(self):
+        self.seq_len = tf.placeholder(
+            tf.int32,
+            [None],
+            'baseline_seq_len'
+        )  # length of each sequence, shape = [batch_size, ]
+
+        self.input_seq = tf.placeholder(
+            tf.int32,
+            [None, self.num_steps],
+            'baseline_input_seq'
+        )  # input sequence, shape = [batch_size, num_steps]
+
+    def build(self):
+        self._define_input()
+
+        with tf.variable_scope("rl_baseline"):
+            output = self.input_seq
+            output = embedding(output, self.vocab.size, self.embedding_dim, name='layer_embedding')
+            input_dim = self.embedding_dim
+
+            # Prepare data shape to match rnn function requirements
+            # Current data input shape: [batch_size, num_steps, input_dim]
+            # Required shape: 'num_steps' tensors list of shape [batch_size, input_dim]
+            output = tf.transpose(output, [1, 0, 2])
+            output = tf.reshape(output, [-1, input_dim])
+            output = tf.split(output, self.num_steps, 0)
+
+            if self.bidirectional:
+                # 'num_steps' tensors list of shape [batch_size, rnn_units * 2]
+                fw_cell = build_cell(self.rnn_units, self.cell_type, self.rnn_layers)
+                bw_cell = build_cell(self.rnn_units, self.cell_type, self.rnn_layers)
+                _output, state_fw, state_bw = rnn.static_bidirectional_rnn(
+                    fw_cell, bw_cell, output, dtype=tf.float32, sequence_length=self.seq_len, scope='encoder')
+
+                if isinstance(state_fw, tf.contrib.rnn.LSTMStateTuple):
+                    encoder_state_c = tf.concat([state_fw.c, state_bw.c], axis=1, name='bidirectional_concat_c')
+                    encoder_state_h = tf.concat([state_fw.h, state_bw.h], axis=1, name='bidirectional_concat_h')
+                    state = tf.contrib.rnn.LSTMStateTuple(c=encoder_state_c, h=encoder_state_h)
+                elif isinstance(state_fw, tf.Tensor):
+                    state = tf.concat([state_fw, state_bw], axis=1, name='bidirectional_concat')
+                else:
+                    raise ValueError
+            else:
+                # 'num_steps' tensors list of shape [batch_size, rnn_units]
+                cell = build_cell(self.rnn_units, self.cell_type, self.rnn_layers)
+                _output, state = rnn.static_rnn(cell, output, dtype=tf.float32, sequence_length=self.seq_len,
+                                               scope='encoder')
+
+            output = state
+            for i in range(self.n_fc_layers):
+                output = tf.contrib.layers.fully_connected(output, self.fc_size, scope="rl_baseline_fc_{}".format(i))
+            output = tf.contrib.layers.fully_connected(output, 1, activation_fn=None)
+
+            return tf.squeeze(output)
 
 class WiderActorNet:
     def __init__(self, out_dim, num_steps, net_type='simple', net_config=None):
@@ -183,8 +264,9 @@ class WiderActorNet:
 
     def build_forward(self, _input):
         output = _input  # [batch_size, num_steps, rnn_units]
-        feature_dim = int(output.get_shape()[2])  # rnn_units
-        output = tf.reshape(output, [-1, feature_dim])  # [batch_size * num_steps, rnn_units]
+
+        self.feature_dim = int(output.get_shape()[2])  # rnn_units
+        output = tf.reshape(output, [-1, self.feature_dim])  # [batch_size * num_steps, rnn_units]
         final_activation = 'sigmoid' if self.out_dim == 1 else 'softmax'
         if self.net_type == 'simple':
             net_config = [] if self.net_config is None else self.net_config
