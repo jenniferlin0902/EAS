@@ -201,8 +201,6 @@ class LocalController:
         expdir_monitor = ExpdirMonitor(expdir)
         valid_performance = expdir_monitor.run(pure=True, restore=False)
         end_time = time.time()
-        print('running time: %s' % (end_time - start_time))
-        print('valid performance: %s' % valid_performance)
         return (end_time - start_time), valid_performance
 
     def check_on(self, queue):
@@ -268,8 +266,6 @@ class LocalClusterController:
 
 
 def run_tasks(config_list, expdir_list):
-    print "config_list", config_list
-    print "expdir_list", expdir_list
     controller = LocalClusterController(config_list)
     result_list = [None for _ in expdir_list]
 

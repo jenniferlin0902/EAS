@@ -124,6 +124,8 @@ if __name__ == '__main__':
         print('Testing...')
         loss, accuracy = model.test(data_provider.test, batch_size=200)
         print('mean cross_entropy: %f, mean accuracy: %f' % (loss, accuracy))
+        if args.save_init:
+            model.save_init(os.path.join(args.path, 'snapshot'))
         json.dump({'test_loss': '%s' % loss, 'test_acc': '%s' % accuracy}, open('%s/output' % args.path, 'w'))
     elif args.train:
         # train the model

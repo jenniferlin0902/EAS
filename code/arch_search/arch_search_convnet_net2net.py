@@ -1,5 +1,5 @@
 from expdir_monitor.arch_manager import ArchManager
-from meta_controller.base_controller import Vocabulary, EncoderNet, WiderActorNet, DeeperActorNet
+from meta_controller.base_controller import Vocabulary, EncoderNet, WiderActorNet, DeeperActorNet, BaselineNet
 from meta_controller.rl_controller import ReinforceNet2NetController
 from meta_controller.rl_baseline_controller import ReinforceBaselineNet2NetController
 from time import gmtime, strftime, time
@@ -42,7 +42,6 @@ def get_net_seq(net_configs, vocabulary, num_steps):
         net_code += [vocabulary.pad_code for _ in range(len(net_code), num_steps)]
         net_seq.append(net_code)
         seq_len.append(_len)
-    print "net seq = {}".format(net_seq)
     return np.array(net_seq), np.array(seq_len)
 
 
@@ -168,10 +167,10 @@ def apply_deeper_decision(deeper_decision, net_configs, kernel_size_list, noise)
 
 
 def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max_episodes, random=False, baseline=True):
-    # filter_num_list = [_i for _i in range(4, 44, 4)]
-    # units_num_list = [_i for _i in range(8, 88, 8)]
-    filter_num_list = [16, 32, 64, 96, 128, 192, 256, 320, 384, 448, 512, 576, 640]
-    units_num_list = [64, 128, 256, 384, 512, 640, 768, 896, 1024, 1152, 1280]
+    filter_num_list = [_i for _i in range(4, 44, 4)]
+    units_num_list = [_i for _i in range(8, 88, 8)]
+    # filter_num_list = [16, 32, 64, 96, 128, 192, 256, 320, 384, 448, 512, 576, 640]
+    # units_num_list = [64, 128, 256, 384, 512, 640, 768, 896, 1024, 1152, 1280]
     kernel_size_list = [1, 3, 5]
 
     # encoder config
@@ -211,11 +210,14 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
     # rl-baseline controller config
     baseline_config = {
-        'size': 256,
-        'n_layer': 3,
+        'fc_size': 256,
+        'n_fc_layers': 3,
         'embedding_dim': encoder_config['embedding_dim'],
         'vocab': Vocabulary(layer_token_list),
-        'num_steps': 50,
+        'num_steps': encoder_config['num_steps'],
+        'rnn_units': encoder_config['rnn_units'],
+        'rnn_type': encoder_config['rnn_type'],
+        'rnn_layers': encoder_config['rnn_layers'],
     }
     # rl_config = {
     #     'baseline': True,
@@ -271,8 +273,9 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
 
     if baseline:
+        baseline_actor = BaselineNet(**baseline_config)
         meta_controller = ReinforceBaselineNet2NetController(arch_manager.meta_controller_path, entropy_penalty,
-                                                     encoder, wider_actor, deeper_actor, opt_config, baseline_config)
+                                                     encoder, wider_actor, deeper_actor, opt_config, baseline_actor)
     else:
         meta_controller = ReinforceNet2NetController(arch_manager.meta_controller_path, entropy_penalty,
                                                  encoder, wider_actor, deeper_actor, opt_config)
@@ -372,6 +375,9 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 deeper_decision_mask = - np.ones([1, meta_controller.deeper_actor.decision_num])
                 deeper_block_layer_num = np.ones([1, meta_controller.deeper_actor.out_dims[0]])
         # we hve batchsize net config
+        # print "Encoder Input seq shape = {}, {}".format(len(encoder_input_seq), len(encoder_input_seq[0]))
+        # print "Encoder seq len len = {}".format(len(encoder_seq_len))
+        # print "Encoder seq len = {}".format(encoder_seq_len)
         run_configs = [run_config] * len(net_configs)
         net_str_list = get_net_str(net_configs)
 
@@ -384,7 +390,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         print "Reward shape = {}".format(rewards)
         # rewards = repeat (rewards for every step) = shape(steps per episode * batch size)
         # update the agent
-        # print "Encoder Input seq len = {}".format(len(encoder_input_seq))
+        
         if not random:
             if baseline:
                 meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)

@@ -23,7 +23,7 @@ class RLNet2NetController(BaseController):
             print('No model files in ' + '%s/model.ckpt.index' % self.path)
 
     def __init__(self, path, entropy_penalty,
-                 encoder, wider_actor, deeper_actor, opt_config, rl_config=None):
+                 encoder, wider_actor, deeper_actor, opt_config, baseline_actor=None):
         assert(isinstance(encoder, EncoderNet))
         assert(isinstance(wider_actor, WiderActorNet))
         assert(isinstance(deeper_actor, DeeperActorNet))
@@ -34,7 +34,7 @@ class RLNet2NetController(BaseController):
         self.wider_actor = wider_actor
         self.deeper_actor = deeper_actor
         self.opt_config = opt_config
-        self.rl_config = rl_config
+        self.baseline_actor = baseline_actor
 
         self.graph = tf.Graph()
         self.obj, self.train_step = None, None
