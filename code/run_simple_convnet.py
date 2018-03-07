@@ -15,7 +15,7 @@ run_config_cifar = {
     'reduce_lr_factors': [10, 10],
     'opt_config': ['momentum', {'momentum': 0.9, 'use_nesterov': True}],
     'dataset': 'C10+',  # choices = [C10, C10+, C100, C100+]
-    'validation_size': 10000,  # None or int
+    'validation_size': 5000,  # None or int
     'validation_frequency': 10,
     'shuffle': 'every_epoch',  # None, once_prior_train, every_epoch
     'normalization': 'by_channels',  # None, divide_256, divide_255, by_channels
