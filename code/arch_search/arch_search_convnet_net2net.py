@@ -335,7 +335,6 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 wider_seg_deeper += len(net_configs)
                 encoder_input_seq.append(input_seq)
                 encoder_seq_len.append(seq_len)
-            print "setting wider_seq_deepr to {}".format(wider_seg_deeper)
             to_set_layers = [[] for _ in range(episode_config['batch_size'])]
             for _j in range(episode_config['deeper_action_num']):
                 input_seq, seq_len = get_net_seq(net_configs, encoder.vocab, encoder.num_steps)

@@ -19,10 +19,11 @@ if args.setting == 'convnet':
     """
     arch_search_convnet(
         start_net_path='../start_nets/start_net_convnet_small_C10+',
-        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_baseline',
-        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_baseline',
+        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_rl_small',
+        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_rl_small',
         max_episodes=30,
         random=False,
+        baseline=False
     )
 elif args.setting == 'densenet':
     """

@@ -22,7 +22,8 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
         # calculate advantage value for one set of input
         baseline = self.sess.run(self.baseline,
                                  feed_dict={self.reward: reward,
-                                            self.baseline_input_seq: input_seq})
+                                            self.baseline_actor.input_seq: input_seq,
+                                            self.baseline_actor.seq_len: input_len})
         adv_val = reward-baseline
         print "Calculating adv, adv_val shpae = {}, baselin shape = {}".format(adv_val.shape, baseline.shape)
         mean = np.mean(adv_val)
@@ -32,7 +33,7 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
 
     def build_baseline_network(self):
         self.baseline = self.baseline_actor.build()
-        print "Building baseline, baseline = {}".format(self.baseline)
+        # print "Building baseline, baseline = {}".format(self.baseline)
         loss = tf.losses.mean_squared_error(self.baseline, self.reward)
         adam = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         # use the same learning rate as rl algorithm
@@ -40,9 +41,9 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
 
     def update_baseline_network(self, input_seq, seq_len, rewards, learning_rate):
         self.sess.run(self.update_baseline_op,
-                      feed_dict={self.baseline_input_seq: input_seq,
+                      feed_dict={self.baseline_actor.input_seq: input_seq,
+                                 self.baseline_actor.seq_len: seq_len,
                                  self.reward : rewards,
-                                 self.baseline_seq_len: seq_len,
                                  self.learning_rate: learning_rate})
 
     def build_training_process(self):
@@ -101,10 +102,7 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
         wider_probs = tf.multiply(wider_probs, tf.reshape(wider_side_reward, shape=[-1, 1]))
 
         wider_side_obj = tf.reduce_sum(wider_probs)
-        if self.baseline_actor is not None:
-            return wider_side_obj, self.get_wider_entropy()
-        else:
-            return wider_side_obj, self.get_wider_entropy_with_baseline()
+        return wider_side_obj, self.get_wider_entropy()
 
 
     def get_deeper_side_obj(self):
@@ -123,8 +121,5 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
 
             deeper_side_obj.append(tf.reduce_sum(deeper_probs))
         deeper_side_obj = tf.reduce_sum(deeper_side_obj)
-        if self.baseline_actor is not None:
-            return deeper_side_obj, self.get_wider_entropy()
-        else:
-            return deeper_side_obj, self.get_deeper_entropy_with_baseline()
+        return deeper_side_obj, self.get_wider_entropy()
 

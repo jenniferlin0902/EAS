@@ -171,7 +171,7 @@ class EncoderNet:
         self.encoder_state = state
         return output, state
 
-class BaselineNet(object):
+class BaselineNet:
     def __init__(self, fc_size, n_fc_layers, num_steps, vocab, embedding_dim, rnn_units, rnn_type='bi_lstm', rnn_layers=1, name_prefix="baseline"):
         self.fc_size = fc_size
         self.n_fc_layers = n_fc_layers
@@ -245,12 +245,12 @@ class BaselineNet(object):
                 _output, state = rnn.static_rnn(cell, output, dtype=tf.float32, sequence_length=self.seq_len,
                                                scope='encoder')
 
-            output = state
+            output = state.h
             for i in range(self.n_fc_layers):
                 output = tf.contrib.layers.fully_connected(output, self.fc_size, scope="rl_baseline_fc_{}".format(i))
             output = tf.contrib.layers.fully_connected(output, 1, activation_fn=None)
-
-            return tf.squeeze(output)
+            output = tf.squeeze(output)
+            return output
 
 class WiderActorNet:
     def __init__(self, out_dim, num_steps, net_type='simple', net_config=None):
