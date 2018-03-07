@@ -9,7 +9,7 @@ import copy
 
 run_config_cifar = {
     'batch_size': 64,
-    'n_epochs': 500,
+    'n_epochs': 3000,
     'init_lr': 0.1,
     'reduce_lr_epochs': [0.5, 0.75],  # epochs * 0.5, epochs * 0.75
     'reduce_lr_factors': [10, 10],
