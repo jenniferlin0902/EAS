@@ -211,7 +211,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
     # rl-baseline controller config
     baseline_config = {
         'fc_size': 256,
-        'n_fc_layers': 3,
+        'n_fc_layers': 1,
         'embedding_dim': encoder_config['embedding_dim'],
         'vocab': Vocabulary(layer_token_list),
         'num_steps': encoder_config['num_steps'],
