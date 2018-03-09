@@ -65,40 +65,34 @@ def get_block_layer_num(net_configs):
         return np.concatenate(block_layer_num, axis=0)
 
 
+
 def apply_wider_decision(wider_decision, net_configs, filter_num_list, units_num_list, noise):
     if len(net_configs) == 1:
         decision = wider_decision[0]
         net_config = net_configs[0]
         decision_mask = []
         for _i, layer in enumerate(net_config.layer_cascade.layers[:-1]):
+            wider_step = decision[_i]
             if isinstance(layer, ConvLayer):
-                if layer.filter_num >= filter_num_list[-1]:
+                if layer.filter_num >= filter_num_list[-wider_step]:
                     decision_mask.append(0.0)
                 else:
                     decision_mask.append(1.0)
-                    if decision[_i]:
-                        new_filter_number = layer.filter_num
-                        for fn in filter_num_list:
-                            if fn > new_filter_number:
-                                new_filter_number = fn
-                                break
-                        net_config.widen(
-                            layer_idx=_i, new_width=new_filter_number, noise=noise
-                        )
+                    new_filter_number = filter_num_list[filter_num_list.index(layer.filter_num) + wider_step]
+                    assert(new_filter_number<=filter_num_list[-1])
+                    # sanity check we are not stepping over max filter number
+                    net_config.widen(
+                        layer_idx=_i, new_width=new_filter_number, noise=noise
+                    )
             elif isinstance(layer, FCLayer):
-                if layer.units >= units_num_list[-1]:
+                if layer.units >= units_num_list[-wider_step]:
                     decision_mask.append(0.0)
                 else:
                     decision_mask.append(1.0)
-                    if decision[_i]:
-                        new_units_num = layer.units
-                        for un in units_num_list:
-                            if un > new_units_num:
-                                new_units_num = un
-                                break
-                        net_config.widen(
-                            layer_idx=_i, new_width=new_units_num, noise=noise,
-                        )
+                    new_units_num = units_num_list[units_num_list.index(layer.units) + wider_step]
+                    net_config.widen(
+                        layer_idx=_i, new_width=new_units_num, noise=noise,
+                    )
             else:
                 decision_mask.append(0.0)
         decision_mask += [0.0] * (len(decision) - len(decision_mask))
@@ -187,7 +181,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
     # wider actor config
     wider_actor_config = {
-        'out_dim': 1,
+        'out_dim': 4,
         'num_steps': encoder_config['num_steps'],
         'net_type': 'simple',
         'net_config': None,
@@ -242,14 +236,14 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
     # episode config
     episode_config = {
-        'batch_size': 10,
+        'batch_size': 1,
         'wider_action_num': 4,
         'deeper_action_num': 5,
     }
 
     # arch search run config
     arch_search_run_config = {
-        'n_epochs': 20,
+        'n_epochs': 1,
         'init_lr': 0.02,
         'validation_size': 5000,
         'other_lr_schedule': {'type': 'cosine'},
@@ -287,7 +281,6 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
         nets = [arch_manager.get_start_net(copy=True) for _ in range(episode_config['batch_size'])]
         net_configs = [net_config for net_config, _, _ in nets]
-        print "Start with {} net configs".format(len(net_configs))
         # feed_dict for update the controller
         wider_decision_trajectory, wider_decision_mask = [], []
         deeper_decision_trajectory, deeper_decision_mask = [], []
@@ -328,10 +321,9 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 # modify net config according to wider_decision
                 wider_mask = apply_wider_decision(wider_decision, net_configs, filter_num_list,
                                                   units_num_list, noise_config)
-
+                print "Got wider decision = {}".format(wider_decision)
                 wider_decision_trajectory.append(wider_decision)
                 wider_decision_mask.append(wider_mask)
-
                 wider_seg_deeper += len(net_configs)
                 encoder_input_seq.append(input_seq)
                 encoder_seq_len.append(seq_len)
@@ -346,7 +338,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                                                             kernel_size_list, noise_config)
                 for _k in range(episode_config['batch_size']):
                     to_set_layers[_k] += to_set[_k]
-
+                print "Got deeper decision = {}".format(deeper_decision)
                 deeper_decision_trajectory.append(deeper_decision)
                 deeper_decision_mask.append(deeper_mask)
                 deeper_block_layer_num.append(block_layer_num)
