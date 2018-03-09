@@ -374,7 +374,10 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 deeper_decision_mask = - np.ones([1, meta_controller.deeper_actor.decision_num])
                 deeper_block_layer_num = np.ones([1, meta_controller.deeper_actor.out_dims[0]])
         # we hve batchsize net config
-        # print "Encoder Input seq shape = {}, {}".format(len(encoder_input_seq), len(encoder_input_seq[0]))
+        print "Encoder Input seq shape = {}, {}".format(len(encoder_input_seq), len(encoder_input_seq[0]))
+        print "Encoder Input seq"
+        print encoder_input_seq
+        return
         # print "Encoder seq len len = {}".format(len(encoder_seq_len))
         # print "Encoder seq len = {}".format(encoder_seq_len)
         run_configs = [run_config] * len(net_configs)
@@ -395,6 +398,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
                 advantages = meta_controller.calculate_advantage(rewards, encoder_input_seq, encoder_seq_len)
                 rewards = advantages
+
 
             meta_controller.update_controller(learning_rate, wider_seg_deeper, wider_decision_trajectory,
                                               wider_decision_mask, deeper_decision_trajectory, deeper_decision_mask,
