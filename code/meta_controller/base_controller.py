@@ -171,6 +171,8 @@ class EncoderNet:
         self.encoder_state = state
         return output, state
 
+
+
 class BaselineNet:
     def __init__(self, fc_size, n_fc_layers, num_steps, vocab, embedding_dim, rnn_units, rnn_type='bi_lstm', rnn_layers=1, name_prefix="baseline"):
         self.fc_size = fc_size
