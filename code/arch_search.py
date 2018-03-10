@@ -3,6 +3,10 @@ import numpy as np
 from arch_search.arch_search_densenet_net2net import arch_search_densenet
 from arch_search.arch_search_convnet_net2net import arch_search_convnet
 
+import os
+import tensorflow as tf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 _SEED = 110
 np.random.seed(_SEED)
 
