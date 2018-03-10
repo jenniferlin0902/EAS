@@ -23,7 +23,7 @@ if args.setting == 'convnet':
         net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_origin',
         max_episodes=30,
         random=False,
-        baseline=True
+        baseline=False
     )
 elif args.setting == 'densenet':
     """
