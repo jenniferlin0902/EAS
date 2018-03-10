@@ -169,8 +169,8 @@ def apply_deeper_decision(deeper_decision, net_configs, kernel_size_list, noise)
 def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max_episodes, random=False, baseline=True):
     # filter_num_list = [_i for _i in range(4, 44, 4)]
     # units_num_list = [_i for _i in range(8, 88, 8)]
-    filter_num_list = [16, 32, 64, 96, 128, 192, 256, 320, 384, 448, 512, 576, 640]
-    units_num_list = [64, 128, 256, 384, 512, 640, 768, 896, 1024, 1152, 1280]
+    filter_num_list = [16, 32, 64, 96, 128, 192, 256]
+    units_num_list = [32, 64, 128, 256, 384, 512, 640]
     kernel_size_list = [1, 3, 5]
 
     # encoder config
@@ -374,12 +374,12 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 deeper_decision_mask = - np.ones([1, meta_controller.deeper_actor.decision_num])
                 deeper_block_layer_num = np.ones([1, meta_controller.deeper_actor.out_dims[0]])
         # we hve batchsize net config
-        print "Encoder Input seq shape = {}, {}".format(len(encoder_input_seq), len(encoder_input_seq[0]))
-        print "Encoder Input seq"
-        print encoder_input_seq
-        return
         # print "Encoder seq len len = {}".format(len(encoder_seq_len))
         # print "Encoder seq len = {}".format(encoder_seq_len)
+        # print "wider_decision_trajectory shape:", wider_decision_trajectory.shape
+        # print "wider_decision_trajectory", wider_decision_trajectory
+        # print "deeper_decision_trajectory shape:", deeper_decision_trajectory.shape
+        # print "deeper_decision_trajectory", deeper_decision_trajectory
         run_configs = [run_config] * len(net_configs)
         net_str_list = get_net_str(net_configs)
 
@@ -397,7 +397,9 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
             if baseline:
                 meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
                 advantages = meta_controller.calculate_advantage(rewards, encoder_input_seq, encoder_seq_len)
+
                 rewards = advantages
+
 
 
             meta_controller.update_controller(learning_rate, wider_seg_deeper, wider_decision_trajectory,

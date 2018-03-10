@@ -9,7 +9,7 @@ import copy
 
 run_config_cifar = {
     'batch_size': 64,
-    'n_epochs': 3000,
+    'n_epochs': 300,
     'init_lr': 0.1,
     'reduce_lr_epochs': [0.5, 0.75],  # epochs * 0.5, epochs * 0.75
     'reduce_lr_factors': [10, 10],
@@ -28,11 +28,11 @@ run_config_cifar = {
 standard_net_config = {
     'conv_blocks_config': [
         [1, 3, 16],
+        [1, 3, 16],
         [1, 3, 32],
-        [1, 3, 64],
-        [1, 3, 128],
+        [1, 3, 32],
     ],
-    'fc_block_config': [256],
+    'fc_block_config': [32],
     'weight_decay': 1e-4,
     'drop_scheme': {'type': 'conv', 'conv_drop': 0.8, 'pool_drop': 0.7, 'fc_drop': 0.5},
     'bn_epsilon': 1e-5,
