@@ -411,7 +411,6 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 print "og reward {}, adjusted reward {}".format(raw_rewards[i], rewards[i])
         else:
             rewards = raw_rewards
-        
         rewards = np.concatenate([rewards for _ in range(episode_config['wider_action_num'] +
                                                          episode_config['deeper_action_num'])])
         rewards /= episode_config['batch_size']
