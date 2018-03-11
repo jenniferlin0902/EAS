@@ -277,12 +277,14 @@ class WiderActorNet:
 		    	output = BasicModel.fc_layer(output, units, use_bias=True)
                     	output = BasicModel.activation(output, activation)
                 logits = BasicModel.fc_layer(output, self.out_dim, use_bias=True)  # [batch_size * num_steps, out_dim]
+                
             probs = BasicModel.activation(logits, final_activation)  # [batch_size * num_steps, out_dim]
             probs_dim = self.out_dim
             if self.out_dim == 1:
                 probs = tf.concat([1 - probs, probs], axis=1)
                 probs_dim = 2
 
+            self.q_values = BasicModel.fc_layer(output, probs_dim, use_bias=True) # [batch_size * num_steps, probs_dim]
             self.decision = tf.multinomial(tf.log(probs), 1)  # [batch_size * num_steps, 1]
             self.decision = tf.reshape(self.decision, [-1, self.num_steps])  # [batch_size, num_steps]
             self.probs = tf.reshape(probs, [-1, self.num_steps, probs_dim])  # [batch_size, num_steps, out_dim]

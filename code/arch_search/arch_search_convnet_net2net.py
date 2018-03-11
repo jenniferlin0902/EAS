@@ -111,6 +111,22 @@ def apply_wider_decision(wider_decision, net_configs, filter_num_list, units_num
             decision_mask.append(mask)
         return np.concatenate(decision_mask, axis=0)
 
+## Given a net_str, calculate number of parameter needed for the model
+## Assume SAME padding for all conv layer
+
+
+def calculate_n_paramters(net_config):
+    n_params = 0
+    for layer in net_config.layer_cascade.layers[:-1]:
+        if isinstance(layer, ConvLayer):
+            n_params += layer.filter_num * (layer.kernel_size * layer.kernel_size)
+        elif isinstance(layer, FCLayer):
+            n_params += layer.units * layer.units
+        else:
+            pass
+    print "got n_params {}".format(n_params)
+    return n_params
+
 
 def apply_deeper_decision(deeper_decision, net_configs, kernel_size_list, noise):
     if len(net_configs) == 1:
@@ -169,8 +185,8 @@ def apply_deeper_decision(deeper_decision, net_configs, kernel_size_list, noise)
 def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max_episodes, random=False, baseline=True):
     # filter_num_list = [_i for _i in range(4, 44, 4)]
     # units_num_list = [_i for _i in range(8, 88, 8)]
-    filter_num_list = [16, 32, 64, 96, 128, 192, 256, 320, 384, 448, 512, 576, 640]
-    units_num_list = [64, 128, 256, 384, 512, 640, 768, 896, 1024, 1152, 1280]
+    filter_num_list = [16, 32, 64, 96, 128, 192, 256]
+    units_num_list = [32, 64, 128, 256, 384, 512, 640]
     kernel_size_list = [1, 3, 5]
 
     # encoder config
@@ -242,14 +258,14 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
     # episode config
     episode_config = {
-        'batch_size': 10,
+        'batch_size': 2,
         'wider_action_num': 4,
         'deeper_action_num': 5,
     }
 
     # arch search run config
     arch_search_run_config = {
-        'n_epochs': 20,
+        'n_epochs': 2,
         'init_lr': 0.02,
         'validation_size': 5000,
         'other_lr_schedule': {'type': 'cosine'},
@@ -261,6 +277,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
     reward_config = {
         'func': 'tan',
         'decay': 0.95,
+        'complexity_penalty': 0.001
     }
 
     arch_manager = ArchManager(start_net_path, arch_search_folder, net_pool_folder)
@@ -287,6 +304,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
         nets = [arch_manager.get_start_net(copy=True) for _ in range(episode_config['batch_size'])]
         net_configs = [net_config for net_config, _, _ in nets]
+        print net_configs[0]
         print "Start with {} net configs".format(len(net_configs))
         # feed_dict for update the controller
         wider_decision_trajectory, wider_decision_mask = [], []
@@ -331,7 +349,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
                 wider_decision_trajectory.append(wider_decision)
                 wider_decision_mask.append(wider_mask)
-
+                print "Got wider decision {}".format(wider_decision)
                 wider_seg_deeper += len(net_configs)
                 encoder_input_seq.append(input_seq)
                 encoder_seq_len.append(seq_len)
@@ -344,6 +362,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 # modify net config according to deeper_decision
                 deeper_mask, to_set = apply_deeper_decision(deeper_decision, net_configs,
                                                             kernel_size_list, noise_config)
+                print "Got deeper decision {}".format(deeper_decision)
                 for _k in range(episode_config['batch_size']):
                     to_set_layers[_k] += to_set[_k]
 
@@ -374,19 +393,30 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 deeper_decision_mask = - np.ones([1, meta_controller.deeper_actor.decision_num])
                 deeper_block_layer_num = np.ones([1, meta_controller.deeper_actor.out_dims[0]])
         # we hve batchsize net config
-        # print "Encoder Input seq shape = {}, {}".format(len(encoder_input_seq), len(encoder_input_seq[0]))
         # print "Encoder seq len len = {}".format(len(encoder_seq_len))
         # print "Encoder seq len = {}".format(encoder_seq_len)
+        # print "wider_decision_trajectory shape:", wider_decision_trajectory.shape
+        # print "wider_decision_trajectory", wider_decision_trajectory
+        # print "deeper_decision_trajectory shape:", deeper_decision_trajectory.shape
+        # print "deeper_decision_trajectory", deeper_decision_trajectory
         run_configs = [run_config] * len(net_configs)
         net_str_list = get_net_str(net_configs)
 
         net_vals = arch_manager.get_net_vals(net_str_list, net_configs, run_configs)
-        rewards = arch_manager.reward(net_vals, reward_config)
-
+        raw_rewards = arch_manager.reward(net_vals, reward_config)
+        if reward_config['complexity_penalty'] != None:
+            rewards = []
+            for i, net in enumerate(net_configs):
+                rewards.append(raw_rewards[i] - np.log(calculate_n_paramters(net)) * reward_config['complexity_penalty'])
+                print "og reward {}, adjusted reward {}".format(raw_rewards[i], rewards[i])
+        else:
+            rewards = raw_rewards
         rewards = np.concatenate([rewards for _ in range(episode_config['wider_action_num'] +
                                                          episode_config['deeper_action_num'])])
         rewards /= episode_config['batch_size']
+
         print "Reward shape = {}".format(rewards)
+        print "Got reward {}".format(rewards)
         # rewards = repeat (rewards for every step) = shape(steps per episode * batch size)
         # update the agent
         
@@ -394,7 +424,10 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
             if baseline:
                 meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
                 advantages = meta_controller.calculate_advantage(rewards, encoder_input_seq, encoder_seq_len)
+
                 rewards = advantages
+
+
 
             meta_controller.update_controller(learning_rate, wider_seg_deeper, wider_decision_trajectory,
                                               wider_decision_mask, deeper_decision_trajectory, deeper_decision_mask,

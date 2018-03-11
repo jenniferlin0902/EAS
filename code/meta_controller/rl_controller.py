@@ -221,7 +221,7 @@ class ReinforceNet2NetController(RLNet2NetController):
         entropy_term /= tf.cast(batch_size, tf.float32)
 
         optimizer = BasicModel.build_optimizer(self.learning_rate, self.opt_config[0], self.opt_config[1])
-        print "in buuild, reward = {}".format(self.reward)
+        print "in build, reward = {}".format(self.reward)
         self.train_step = optimizer.minimize(- self.obj - self.entropy_penalty * entropy_term)
 
     def get_wider_side_obj(self):
