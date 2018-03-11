@@ -259,14 +259,14 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
     # episode config
     episode_config = {
-        'batch_size': 2,
+        'batch_size': 10,
         'wider_action_num': 4,
         'deeper_action_num': 5,
     }
 
     # arch search run config
     arch_search_run_config = {
-        'n_epochs': 2,
+        'n_epochs': 20,
         'init_lr': 0.02,
         'validation_size': 5000,
         'other_lr_schedule': {'type': 'cosine'},
