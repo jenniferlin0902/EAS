@@ -270,6 +270,7 @@ class WiderActorNet:
         final_activation = 'sigmoid' if self.out_dim == 1 else 'softmax'
         if self.net_type == 'simple':
             net_config = [] if self.net_config is None else self.net_config
+            print net_config
             with tf.variable_scope('wider_actor'):
                 for layer in net_config:
                     units, activation = layer.get('units'), layer.get('activation', 'relu')

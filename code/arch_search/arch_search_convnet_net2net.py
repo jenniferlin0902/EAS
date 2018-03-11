@@ -259,8 +259,8 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
     # episode config
     episode_config = {
         'batch_size': 2,
-        'wider_action_num': 4,
-        'deeper_action_num': 5,
+        'wider_action_num': 3,
+        'deeper_action_num': 2,
     }
 
     # arch search run config
@@ -271,6 +271,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         'other_lr_schedule': {'type': 'cosine'},
         'batch_size': 64,
         'include_extra': False,
+        'replay_ratio' : 3,
     }
 
     # reward config
@@ -298,8 +299,8 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                                                  encoder, wider_actor, deeper_actor, opt_config)
     meta_controller.load()
 
-    for _i in range(arch_manager.episode + 1, max_episodes + 1):
-        print('episode. %d start. current time: %s' % (_i, strftime("%a, %d %b %Y %H:%M:%S", gmtime())))
+    for episode_number in range(arch_manager.episode + 1, max_episodes + 1):
+        print('episode. %d start. current time: %s' % (episode_number, strftime("%a, %d %b %Y %H:%M:%S", gmtime())))
         start_time = time()
 
         nets = [arch_manager.get_start_net(copy=True) for _ in range(episode_config['batch_size'])]
@@ -312,6 +313,8 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         deeper_block_layer_num = []
         encoder_input_seq, encoder_seq_len = [], []
         wider_seg_deeper = 0
+        # buffer to push to replay buffer
+        wider_probs_trajectory, deeper_probs_trajectory = [], []
 
         if random:
             # random search
@@ -340,95 +343,150 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                     remain_deeper_num -= 1
         else:
             # on-policy training
-            for _j in range(episode_config['wider_action_num']):
-                input_seq, seq_len = get_net_seq(net_configs, encoder.vocab, encoder.num_steps)
-                wider_decision, wider_probs = meta_controller.sample_wider_decision(input_seq, seq_len)
-                # modify net config according to wider_decision
-                wider_mask = apply_wider_decision(wider_decision, net_configs, filter_num_list,
-                                                  units_num_list, noise_config)
+            # TODO make better starting condition for random choice
+            #TODO refactor to combin wider and deeper
+            replay = (meta_controller.replay_buf_len() > 0) and ((episode_number - 1) % arch_search_run_config["replay_ratio"] != 0)
+            if replay:
+                print "========== Sampling from replay buffer ============="
+                rewards, encoder_input_seq, encoder_seq_len, \
+                wider_decision_trajectory, deeper_decision_trajectory, \
+                wider_decision_mask, deeper_decision_mask,\
+                deeper_block_layer_num, \
+                wider_ratio_trajectory, deeper_ratio_trajectory\
+                    = meta_controller.sample_from_replay(episode_config["batch_size"])
 
-                wider_decision_trajectory.append(wider_decision)
-                wider_decision_mask.append(wider_mask)
-                print "Got wider decision {}".format(wider_decision)
-                wider_seg_deeper += len(net_configs)
-                encoder_input_seq.append(input_seq)
-                encoder_seq_len.append(seq_len)
-            to_set_layers = [[] for _ in range(episode_config['batch_size'])]
-            for _j in range(episode_config['deeper_action_num']):
-                input_seq, seq_len = get_net_seq(net_configs, encoder.vocab, encoder.num_steps)
-                block_layer_num = get_block_layer_num(net_configs)
-                deeper_decision, deeper_probs = meta_controller.sample_deeper_decision(input_seq, seq_len,
-                                                                                       block_layer_num)
-                # modify net config according to deeper_decision
-                deeper_mask, to_set = apply_deeper_decision(deeper_decision, net_configs,
-                                                            kernel_size_list, noise_config)
-                print "Got deeper decision {}".format(deeper_decision)
-                for _k in range(episode_config['batch_size']):
-                    to_set_layers[_k] += to_set[_k]
-
-                deeper_decision_trajectory.append(deeper_decision)
-                deeper_decision_mask.append(deeper_mask)
-                deeper_block_layer_num.append(block_layer_num)
-                encoder_input_seq.append(input_seq)
-                encoder_seq_len.append(seq_len)
-
-            for _k, net_config in enumerate(net_configs):
-                net_config.set_identity4deepen(to_set_layers[_k], arch_manager.data_provider,
-                                               batch_size=64, batch_num=1, noise=noise_config)
-            # prepare feed dict
-            encoder_input_seq = np.concatenate(encoder_input_seq, axis=0)
-            encoder_seq_len = np.concatenate(encoder_seq_len, axis=0)
-            if episode_config['wider_action_num'] > 0:
+                # flatten to n_step * batchsize to match the output from on-poicy
                 wider_decision_trajectory = np.concatenate(wider_decision_trajectory, axis=0)
-                wider_decision_mask = np.concatenate(wider_decision_mask, axis=0)
-            else:
-                wider_decision_trajectory = -np.ones([1, meta_controller.encoder.num_steps])
-                wider_decision_mask = -np.ones([1, meta_controller.encoder.num_steps])
-            if episode_config['deeper_action_num'] > 0:
                 deeper_decision_trajectory = np.concatenate(deeper_decision_trajectory, axis=0)
+                encoder_input_seq = np.concatenate(encoder_input_seq, axis=0)
+                encoder_seq_len = np.concatenate(encoder_seq_len, axis=0)
+                wider_decision_mask = np.concatenate(wider_decision_mask, axis=0)
                 deeper_decision_mask = np.concatenate(deeper_decision_mask, axis=0)
+                rewards = np.concatenate(rewards, axis=0)
                 deeper_block_layer_num = np.concatenate(deeper_block_layer_num, axis=0)
+                wider_seg_deeper = episode_config['wider_action_num'] * len(net_configs)
+                # ratio are in #batchsize, # step, #layer/#decision_num
+
             else:
-                deeper_decision_trajectory = - np.ones([1, meta_controller.deeper_actor.decision_num])
-                deeper_decision_mask = - np.ones([1, meta_controller.deeper_actor.decision_num])
-                deeper_block_layer_num = np.ones([1, meta_controller.deeper_actor.out_dims[0]])
-        # we hve batchsize net config
-        # print "Encoder seq len len = {}".format(len(encoder_seq_len))
-        # print "Encoder seq len = {}".format(encoder_seq_len)
-        # print "wider_decision_trajectory shape:", wider_decision_trajectory.shape
-        # print "wider_decision_trajectory", wider_decision_trajectory
-        # print "deeper_decision_trajectory shape:", deeper_decision_trajectory.shape
-        # print "deeper_decision_trajectory", deeper_decision_trajectory
-        run_configs = [run_config] * len(net_configs)
-        net_str_list = get_net_str(net_configs)
+                print "=========== On policy sampling ============"
+                for _j in range(episode_config['wider_action_num']):
+                    input_seq, seq_len = get_net_seq(net_configs, encoder.vocab, encoder.num_steps)
+                    wider_decision, wider_probs_all = meta_controller.sample_wider_decision(input_seq, seq_len)
+                   
+                    # wider_probs_all = # batch size, # 50, # output dim (2)
+                    # wider_decision = # batch size, # 50
+                    # modify net config according to wider_decision
 
-        net_vals = arch_manager.get_net_vals(net_str_list, net_configs, run_configs)
-        raw_rewards = arch_manager.reward(net_vals, reward_config)
-        if reward_config['complexity_penalty'] != None:
-            rewards = []
-            for i, net in enumerate(net_configs):
-                rewards.append(raw_rewards[i] - np.log(calculate_n_paramters(net)) * reward_config['complexity_penalty'])
-                print "og reward {}, adjusted reward {}".format(raw_rewards[i], rewards[i])
-        else:
-            rewards = raw_rewards
-        rewards = np.concatenate([rewards for _ in range(episode_config['wider_action_num'] +
-                                                         episode_config['deeper_action_num'])])
-        rewards /= episode_config['batch_size']
-
-        print "Reward shape = {}".format(rewards)
-        print "Got reward {}".format(rewards)
-        # rewards = repeat (rewards for every step) = shape(steps per episode * batch size)
-        # update the agent
-        
-        if not random:
-            if baseline:
-                meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
-                advantages = meta_controller.calculate_advantage(rewards, encoder_input_seq, encoder_seq_len)
-
-                rewards = advantages
+                    wider_mask = apply_wider_decision(wider_decision, net_configs, filter_num_list,
+                                                      units_num_list, noise_config)
 
 
+                    wider_probs = []
+                    for b in range(episode_config['batch_size']):
+                        wider_probs_per_batch = []
+                        for layer in range(len(wider_probs_all[0])):
+                            wider_probs_per_batch.append(wider_probs_all[b][layer][wider_decision[b][layer]])
+                        wider_probs.append(wider_probs_per_batch)
 
+                    wider_probs_trajectory.append(wider_probs)
+                    wider_decision_trajectory.append(wider_decision)
+                    # wider_probs = #n_decision, batch_size
+                    # wider_probs_trajectory = #n_step, #n_decision, batch_size
+                    wider_decision_mask.append(wider_mask)
+                    wider_seg_deeper += len(net_configs)
+                    encoder_input_seq.append(input_seq)
+                    encoder_seq_len.append(seq_len)
+                to_set_layers = [[] for _ in range(episode_config['batch_size'])]
+                for _j in range(episode_config['deeper_action_num']):
+                    input_seq, seq_len = get_net_seq(net_configs, encoder.vocab, encoder.num_steps)
+                    block_layer_num = get_block_layer_num(net_configs)
+                    deeper_decision, deeper_probs_all = meta_controller.sample_deeper_decision(input_seq, seq_len,
+                                                                                           block_layer_num)
+                    # modify net config according to deeper_decision
+                    deeper_mask, to_set = apply_deeper_decision(deeper_decision, net_configs,
+                                                                kernel_size_list, noise_config)
+                    for _k in range(episode_config['batch_size']):
+                        to_set_layers[_k] += to_set[_k]
+
+                    deeper_probs = []
+                    for d in range(deeper_actor_config['decision_num']):
+                        decision_prob = []
+                        for b in range(episode_config['batch_size']):
+                            decision_prob.append(deeper_probs_all[d][b][deeper_decision[b][d]])
+                        deeper_probs.append(decision_prob)
+                    # deeper_probs = #n_decision, batch_size
+                    # deeper_probs_trajectory = #n_step, #n_decision, batch_size
+                    deeper_probs_trajectory.append(deeper_probs)
+                    deeper_decision_trajectory.append(deeper_decision)
+                    deeper_decision_mask.append(deeper_mask)
+                    deeper_block_layer_num.append(block_layer_num)
+                    encoder_input_seq.append(input_seq)
+                    encoder_seq_len.append(seq_len)
+
+                for _k, net_config in enumerate(net_configs):
+                    net_config.set_identity4deepen(to_set_layers[_k], arch_manager.data_provider,
+                                                   batch_size=64, batch_num=1, noise=noise_config)
+
+
+                # prepare feed dict
+                encoder_input_seq = np.concatenate(encoder_input_seq, axis=0)
+                encoder_seq_len = np.concatenate(encoder_seq_len, axis=0)
+                if episode_config['wider_action_num'] > 0:
+                    wider_decision_trajectory = np.concatenate(wider_decision_trajectory, axis=0)
+                    wider_decision_mask = np.concatenate(wider_decision_mask, axis=0)
+                else:
+                    wider_decision_trajectory = -np.ones([1, meta_controller.encoder.num_steps])
+                    wider_decision_mask = -np.ones([1, meta_controller.encoder.num_steps])
+                if episode_config['deeper_action_num'] > 0:
+                    deeper_decision_trajectory = np.concatenate(deeper_decision_trajectory, axis=0)
+                    deeper_decision_mask = np.concatenate(deeper_decision_mask, axis=0)
+                    deeper_block_layer_num = np.concatenate(deeper_block_layer_num, axis=0)
+                else:
+                    deeper_decision_trajectory = - np.ones([1, meta_controller.deeper_actor.decision_num])
+                    deeper_decision_mask = - np.ones([1, meta_controller.deeper_actor.decision_num])
+                    deeper_block_layer_num = np.ones([1, meta_controller.deeper_actor.out_dims[0]])
+                    # if off policy, sample  from replay buffer
+                wider_probs_trajectory = np.array(wider_probs_trajectory)
+                wider_probs_trajectory.transpose((2,0,1)) # batch_size, #n_step, #layer
+                deeper_probs_trajectory = np.array(deeper_probs_trajectory)
+                deeper_probs_trajectory.transpose((2,0,1)) # batch_size, #n_step, #n_decision
+
+
+                ## run experiements to get rewards
+                run_configs = [run_config] * len(net_configs)
+                net_str_list = get_net_str(net_configs)
+                net_vals = arch_manager.get_net_vals(net_str_list, net_configs, run_configs)
+                raw_rewards = arch_manager.reward(net_vals, reward_config)
+                if reward_config['complexity_penalty'] != None:
+                    rewards = []
+                    for i, net in enumerate(net_configs):
+                        rewards.append(raw_rewards[i] - np.log(calculate_n_paramters(net)) * reward_config['complexity_penalty'])
+                        print "og reward {}, adjusted reward {}".format(raw_rewards[i], rewards[i])
+                else:
+                    rewards = raw_rewards
+
+                rewards = np.concatenate([rewards for _ in range(episode_config['wider_action_num'] +
+                                                                 episode_config['deeper_action_num'])])
+                rewards /= episode_config['batch_size']
+
+
+                meta_controller.add_to_replay(rewards, encoder_input_seq, encoder_seq_len,
+                                              wider_decision_trajectory, deeper_decision_trajectory,
+                                              wider_probs_trajectory, deeper_probs_trajectory,
+                                              wider_decision_mask, deeper_decision_mask,
+                                              deeper_block_layer_num,
+                                              episode_config['wider_action_num'], episode_config['deeper_action_num'],
+                                              episode_config['batch_size'])
+
+                if not random:
+                    if baseline:
+                        meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
+                        advantages = meta_controller.calculate_advantage(rewards, encoder_input_seq, encoder_seq_len)
+
+                        rewards = advantages
+
+
+            # TODO pass in ratio_trajectory to update_controller
             meta_controller.update_controller(learning_rate, wider_seg_deeper, wider_decision_trajectory,
                                               wider_decision_mask, deeper_decision_trajectory, deeper_decision_mask,
                                               rewards, deeper_block_layer_num, encoder_input_seq, encoder_seq_len)
@@ -436,7 +494,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
             meta_controller.save()
         # episode end
         time_per_episode = time() - start_time
-        seconds_left = int((max_episodes - _i) * time_per_episode)
+        seconds_left = int((max_episodes - episode_number) * time_per_episode)
         print('Time per Episode: %s, Est. complete in: %s' % (
             str(timedelta(seconds=time_per_episode)),
             str(timedelta(seconds=seconds_left))))

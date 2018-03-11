@@ -1,6 +1,8 @@
 from models.dense_net import DenseNetConfig, DenseNet
 from models.convnet import SimpleConvnetConfig, SimpleConvnet
+from meta_controller.base_controller import WiderActorNet, DeeperActorNet, EncoderNet
 import numpy as np
+import random
 
 
 def get_model_config_by_name(name):
@@ -19,7 +21,6 @@ def get_model_by_name(name):
         return SimpleConvnet
     else:
         raise ValueError('Unknown model type %s' % name)
-
 
 class RunConfig:
     def __init__(self, batch_size, n_epochs, init_lr, reduce_lr_epochs, reduce_lr_factors, opt_config,

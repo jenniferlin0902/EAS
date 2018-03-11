@@ -433,6 +433,7 @@ class DenseNetConfig:
         """
         to_set_layers = [(new_layer, prev_layer), ...]
         """
+        print "to_set_layers = {}".format(to_set_layers)
         task_list = {}
         for new_layer, prev_layer in to_set_layers:
             if new_layer.ready: continue

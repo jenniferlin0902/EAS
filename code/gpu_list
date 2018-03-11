@@ -1,1 +1,1 @@
-["/device:GPU:0", "/device:GPU:1"]
+["/device:CPU:0"]
