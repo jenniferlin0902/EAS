@@ -271,10 +271,11 @@ class WiderActorNet:
         if self.net_type == 'simple':
             net_config = [] if self.net_config is None else self.net_config
             with tf.variable_scope('wider_actor'):
-                for layer in net_config:
-                    units, activation = layer.get('units'), layer.get('activation', 'relu')
-                    output = BasicModel.fc_layer(output, units, use_bias=True)
-                    output = BasicModel.activation(output, activation)
+                for i, layer in enumerate(net_config):
+		    with tf.variable_scope("layer_{}".format(i)):
+                   	units, activation = layer.get('units'), layer.get('activation', 'relu')
+		    	output = BasicModel.fc_layer(output, units, use_bias=True)
+                    	output = BasicModel.activation(output, activation)
                 logits = BasicModel.fc_layer(output, self.out_dim, use_bias=True)  # [batch_size * num_steps, out_dim]
             probs = BasicModel.activation(logits, final_activation)  # [batch_size * num_steps, out_dim]
             probs_dim = self.out_dim
