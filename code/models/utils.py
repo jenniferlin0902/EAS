@@ -1,6 +1,11 @@
 from models.dense_net import DenseNetConfig, DenseNet
 from models.convnet import SimpleConvnetConfig, SimpleConvnet
+from meta_controller.base_controller import WiderActorNet, DeeperActorNet, EncoderNet
 import numpy as np
+import random
+import os
+import json
+import collections
 
 
 def get_model_config_by_name(name):
@@ -19,6 +24,32 @@ def get_model_by_name(name):
         return SimpleConvnet
     else:
         raise ValueError('Unknown model type %s' % name)
+
+class Logger(object):
+    __instance = None
+
+    def __new__(cls, arch_search_path=None):
+        if cls.__instance == None:
+            cls.__instance = object.__new__(cls)
+            cls.__instance.name = "EAS_Logger"
+
+            cls.log_type = ["reward", "input_seq", "seq_len", "action"]
+            cls.log_dir = os.path.join(arch_search_path, "log")
+
+            if not os.path.exists(cls.log_dir):
+                os.mkdir(cls.log_dir)
+
+            cls.log_buffer = collections.defaultdict(list)
+
+        return cls.__instance
+
+    def log(cls, type, data):
+        cls.log_buffer[type].append(data)
+
+        # always flush
+        log_file = os.path.join(cls.log_dir, type + ".json")
+        with open(log_file, "wb") as f:
+            json.dump(cls.log_buffer[type], f)
 
 
 class RunConfig:
