@@ -3,6 +3,10 @@ import numpy as np
 from arch_search.arch_search_densenet_net2net import arch_search_densenet
 from arch_search.arch_search_convnet_net2net import arch_search_convnet
 
+import os
+import tensorflow as tf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 _SEED = 110
 np.random.seed(_SEED)
 
@@ -19,8 +23,8 @@ if args.setting == 'convnet':
     """
     arch_search_convnet(
         start_net_path='../start_nets/start_net_convnet_C10+',
-        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_large_baseline',
-        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_large_baseline',
+        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_origin',
+        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_origin',
         max_episodes=30,
         random=False,
         baseline=False

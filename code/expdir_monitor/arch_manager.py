@@ -178,6 +178,8 @@ class ArchManager:
         to_run = {}
         for _i, net_str in enumerate(net_str_list):
             net_val, net_folder = self.net_pool.get_net_val(net_str)
+            print "dir:", os.path.basename(net_folder)
+            print "arch:", net_str
             if net_val is None:
                 if net_folder in to_run: to_run[net_folder] += [_i]
                 else:
