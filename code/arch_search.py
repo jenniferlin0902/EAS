@@ -22,11 +22,11 @@ if args.setting == 'convnet':
     Architecture Search on Convnet
     """
     arch_search_convnet(
-        start_net_path='../start_nets/start_net_convnet_C10+',
-        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_origin',
-        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_origin',
+        start_net_path='../start_nets/start_net_convnet_small_C10+',
+        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_random',
+        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_random',
         max_episodes=30,
-        random=False,
+        random=True,
         baseline=False
     )
 elif args.setting == 'densenet':
