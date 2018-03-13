@@ -316,17 +316,11 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
     encoder = EncoderNet(**encoder_config)
     wider_actor = WiderActorNet(**wider_actor_config)
     deeper_actor = DeeperActorNet(**deeper_actor_config)
-<<<<<<< HEAD
-
+    logger = Logger(arch_search_folder)
     if acer:
         baseline_actor = BaselineNet(**baseline_config)
         meta_controller = ReinforceAcerNet2NetController(arch_manager.meta_controller_path, entropy_penalty,
                                                      encoder, wider_actor, deeper_actor, opt_config, baseline_actor)
-=======
-    logger = Logger(arch_search_folder)
-    logger.log("hello", [1,2,3])
->>>>>>> 52f6bb8eff0b3e9bfa69044c288265045922e103
-
     elif baseline:
         baseline_actor = BaselineNet(**baseline_config)
         meta_controller = ReinforceBaselineNet2NetController(arch_manager.meta_controller_path, entropy_penalty,
@@ -395,10 +389,6 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
                 wider_decision_trajectory.append(wider_decision)
                 wider_decision_mask.append(wider_mask)
-<<<<<<< HEAD
-=======
-                print "Got wider decision {}".format(wider_decision)
->>>>>>> 52f6bb8eff0b3e9bfa69044c288265045922e103
                 wider_seg_deeper += len(net_configs)
                 encoder_input_seq.append(input_seq)
                 encoder_seq_len.append(seq_len)
