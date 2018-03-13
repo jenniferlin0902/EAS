@@ -6,6 +6,7 @@ from meta_controller.rl_acer_controller import ReinforceAcerNet2NetController
 from time import gmtime, strftime, time
 from datetime import timedelta
 from models.layers import ConvLayer, FCLayer, PoolLayer
+from models.utils import Logger
 import re
 import numpy as np
 
@@ -111,6 +112,22 @@ def apply_wider_decision(wider_decision, net_configs, filter_num_list, units_num
             mask = apply_wider_decision([decision], [net_config], filter_num_list, units_num_list, noise)
             decision_mask.append(mask)
         return np.concatenate(decision_mask, axis=0)
+
+## Given a net_str, calculate number of parameter needed for the model
+## Assume SAME padding for all conv layer
+
+
+def calculate_n_paramters(net_config):
+    n_params = 0
+    for layer in net_config.layer_cascade.layers[:-1]:
+        if isinstance(layer, ConvLayer):
+            n_params += layer.filter_num * (layer.kernel_size * layer.kernel_size)
+        elif isinstance(layer, FCLayer):
+            n_params += layer.units * layer.units
+        else:
+            pass
+    print "got n_params {}".format(n_params)
+    return n_params
 
 
 def apply_deeper_decision(deeper_decision, net_configs, kernel_size_list, noise):
@@ -268,14 +285,14 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
     # episode config
     episode_config = {
-        'batch_size': 10,
+        'batch_size': 2,
         'wider_action_num': 4,
         'deeper_action_num': 5,
     }
 
     # arch search run config
     arch_search_run_config = {
-        'n_epochs': 20,
+        'n_epochs': 2,
         'init_lr': 0.02,
         'validation_size': 5000,
         'other_lr_schedule': {'type': 'cosine'},
@@ -287,6 +304,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
     reward_config = {
         'func': 'tan',
         'decay': 0.95,
+        'complexity_penalty': 0.001
     }
 
     if acer: baseline = True
@@ -298,11 +316,16 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
     encoder = EncoderNet(**encoder_config)
     wider_actor = WiderActorNet(**wider_actor_config)
     deeper_actor = DeeperActorNet(**deeper_actor_config)
+<<<<<<< HEAD
 
     if acer:
         baseline_actor = BaselineNet(**baseline_config)
         meta_controller = ReinforceAcerNet2NetController(arch_manager.meta_controller_path, entropy_penalty,
                                                      encoder, wider_actor, deeper_actor, opt_config, baseline_actor)
+=======
+    logger = Logger(arch_search_folder)
+    logger.log("hello", [1,2,3])
+>>>>>>> 52f6bb8eff0b3e9bfa69044c288265045922e103
 
     elif baseline:
         baseline_actor = BaselineNet(**baseline_config)
@@ -319,6 +342,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
         nets = [arch_manager.get_start_net(copy=True) for _ in range(episode_config['batch_size'])]
         net_configs = [net_config for net_config, _, _ in nets]
+        print net_configs[0]
         print "Start with {} net configs".format(len(net_configs))
         # feed_dict for update the controller
         wider_decision_trajectory, wider_decision_mask, wider_decision_q_values = [], [], []
@@ -352,6 +376,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                         net_config.set_identity4deepen(to_set_layers[_k], arch_manager.data_provider,
                                                        batch_size=64, batch_num=1, noise=noise_config)
                     remain_deeper_num -= 1
+
         else:
             # on-policy training
             for _j in range(episode_config['wider_action_num']):
@@ -370,6 +395,10 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
 
                 wider_decision_trajectory.append(wider_decision)
                 wider_decision_mask.append(wider_mask)
+<<<<<<< HEAD
+=======
+                print "Got wider decision {}".format(wider_decision)
+>>>>>>> 52f6bb8eff0b3e9bfa69044c288265045922e103
                 wider_seg_deeper += len(net_configs)
                 encoder_input_seq.append(input_seq)
                 encoder_seq_len.append(seq_len)
@@ -389,6 +418,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 # modify net config according to deeper_decision
                 deeper_mask, to_set = apply_deeper_decision(deeper_decision, net_configs,
                                                             kernel_size_list, noise_config)
+                print "Got deeper decision {}".format(deeper_decision)
                 for _k in range(episode_config['batch_size']):
                     to_set_layers[_k] += to_set[_k]
 
@@ -435,16 +465,27 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         run_configs = [run_config] * len(net_configs)
         net_str_list = get_net_str(net_configs)
         net_vals = arch_manager.get_net_vals(net_str_list, net_configs, run_configs)
-        rewards = arch_manager.reward(net_vals, reward_config)
-        # print "Reward shape = {}".format(rewards.shape)
+        raw_rewards = arch_manager.reward(net_vals, reward_config)
+        if reward_config['complexity_penalty'] != None:
+            rewards = []
+            for i, net in enumerate(net_configs):
+                rewards.append(raw_rewards[i] - np.log(calculate_n_paramters(net)) * reward_config['complexity_penalty'])
+                print "og reward {}, adjusted reward {}".format(raw_rewards[i], rewards[i])
+        else:
+            rewards = raw_rewards
+
+        # log data
+        n_steps = episode_config['wider_action_num'] + episode_config['deeper_action_num']
+        logger.log("net_str", net_str_list)
+        logger.log("reward_episode", rewards)
+        logger.log("encoder_input", encoder_input_seq)
         rewards = np.concatenate([rewards for _ in range(episode_config['wider_action_num'] +
                                                          episode_config['deeper_action_num'])])
         rewards /= episode_config['batch_size']
-        # print "Reward shape = {}".format(rewards.shape)
+
         # rewards = repeat (rewards for every step) = shape(steps per episode * batch size)
         # update the agent
-        # return
-        
+
         if not random:
             if baseline and not acer:
                 meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
