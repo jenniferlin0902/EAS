@@ -5,6 +5,7 @@ from meta_controller.rl_baseline_controller import ReinforceBaselineNet2NetContr
 from time import gmtime, strftime, time
 from datetime import timedelta
 from models.layers import ConvLayer, FCLayer, PoolLayer
+from models.utils import Logger
 import re
 import numpy as np
 
@@ -287,7 +288,8 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
     encoder = EncoderNet(**encoder_config)
     wider_actor = WiderActorNet(**wider_actor_config)
     deeper_actor = DeeperActorNet(**deeper_actor_config)
-
+    logger = Logger(arch_search_folder)
+    logger.log("hello", [1,2,3])
 
     if baseline:
         baseline_actor = BaselineNet(**baseline_config)
@@ -338,6 +340,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                         net_config.set_identity4deepen(to_set_layers[_k], arch_manager.data_provider,
                                                        batch_size=64, batch_num=1, noise=noise_config)
                     remain_deeper_num -= 1
+
         else:
             # on-policy training
             for _j in range(episode_config['wider_action_num']):
@@ -411,6 +414,12 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 print "og reward {}, adjusted reward {}".format(raw_rewards[i], rewards[i])
         else:
             rewards = raw_rewards
+
+        # log data
+        n_steps = episode_config['wider_action_num'] + episode_config['deeper_action_num']
+        logger.log("net_str", net_str_list)
+        logger.log("reward_episode", rewards)
+        logger.log("encoder_input", encoder_input_seq.reshape((episode_config['batch_size'], n_steps, -1)))
         rewards = np.concatenate([rewards for _ in range(episode_config['wider_action_num'] +
                                                          episode_config['deeper_action_num'])])
         rewards /= episode_config['batch_size']
@@ -419,7 +428,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         print "Got reward {}".format(rewards)
         # rewards = repeat (rewards for every step) = shape(steps per episode * batch size)
         # update the agent
-        
+
         if not random:
             if baseline:
                 meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
