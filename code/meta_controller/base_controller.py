@@ -283,7 +283,8 @@ class WiderActorNet:
                 probs = tf.concat([1 - probs, probs], axis=1)
                 probs_dim = 2
 
-            self.q_values = BasicModel.fc_layer(output, probs_dim, use_bias=True) # [batch_size * num_steps, probs_dim]
+            self.q_values = tf.reshape(BasicModel.fc_layer(output, probs_dim, use_bias=True), [-1, self.num_steps, probs_dim]) 
+            # [batch_size, num_steps, probs_dim]
             self.decision = tf.multinomial(tf.log(probs), 1)  # [batch_size * num_steps, 1]
             self.decision = tf.reshape(self.decision, [-1, self.num_steps])  # [batch_size, num_steps]
             self.probs = tf.reshape(probs, [-1, self.num_steps, probs_dim])  # [batch_size, num_steps, out_dim]
@@ -324,7 +325,7 @@ class DeeperActorNet:
 
     def build_forward(self, encoder_output, encoder_state, is_training, decision_trajectory):
         self._define_input()
-        self.decision, self.probs = [], []
+        self.decision, self.probs, self.q_values = [], [], []
 
         batch_size = array_ops.shape(encoder_output)[0]
         if self.attention_config is None:
@@ -339,6 +340,8 @@ class DeeperActorNet:
                         cell_output, cell_state = cell(cell_input_embed, cell_state)
                     with tf.variable_scope('classifier_%d' % _i):
                         logits_i = BasicModel.fc_layer(cell_output, self.out_dims[_i], use_bias=True)
+                    with tf.variable_scope('q_value_%d' % _i):
+                        qv = BasicModel.fc_layer(cell_output, self.out_dims[_i], use_bias=True)
                     act_i = 'softmax'
                     probs_i = BasicModel.activation(logits_i, activation=act_i)  # [batch_size, out_dim_i]
                     if _i == 1:
@@ -360,6 +363,7 @@ class DeeperActorNet:
                         lambda: decision_trajectory[:, _i],
                         lambda: decision_i,
                     )
+                    self.q_values.append(qv)
                     self.decision.append(decision_i)
                     self.probs.append(probs_i)
                 self.decision = tf.stack(self.decision, axis=1)  # [batch_size, decision_num]

@@ -38,6 +38,7 @@ class RLNet2NetController(BaseController):
 
         self.graph = tf.Graph()
         self.obj, self.train_step = None, None
+        self.c = tf.constant(1.0, dtype=tf.float32)
         with self.graph.as_default():
             self._define_input()
             self.build_forward()
@@ -87,6 +88,11 @@ class RLNet2NetController(BaseController):
             shape=[],
             name='has_deeper',
         )
+        self.rho = tf.placeholder(
+            tf.float32,
+            shape=[],
+            name='rho',
+        )
         self._define_subclass_input()
 
     def _define_subclass_input(self):
@@ -108,6 +114,7 @@ class RLNet2NetController(BaseController):
             self.encoder.input_seq: input_seq,
             self.encoder.seq_len: seq_len,
             self.has_deeper: has_deeper,
+            self.rho: rho,
         }
 
         self.sess.run(self.train_step, feed_dict=feed_dict)

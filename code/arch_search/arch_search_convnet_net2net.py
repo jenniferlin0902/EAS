@@ -2,6 +2,7 @@ from expdir_monitor.arch_manager import ArchManager
 from meta_controller.base_controller import Vocabulary, EncoderNet, WiderActorNet, DeeperActorNet, BaselineNet
 from meta_controller.rl_controller import ReinforceNet2NetController
 from meta_controller.rl_baseline_controller import ReinforceBaselineNet2NetController
+from meta_controller.rl_acer_controller import ReinforceAcerNet2NetController
 from time import gmtime, strftime, time
 from datetime import timedelta
 from models.layers import ConvLayer, FCLayer, PoolLayer
@@ -165,12 +166,33 @@ def apply_deeper_decision(deeper_decision, net_configs, kernel_size_list, noise)
             to_set_layers.append(to_set)
         return np.concatenate(decision_mask, axis=0), to_set_layers
 
+def q_retrace(rewards, masks, q_is, values, rho_i, nsteps, gamma):
+    """
+    Calculates q_retrace targets
+    :param R: Rewards [batch_size, nsteps]
+    :param D: Dones [batch_size, nsteps]
+    :param q_i: Q values for actions taken [batch_size, nsteps]
+    :param v: V values [batch_size, nsteps]
+    :param rho_i: Importance weight for each action [batch_size, nsteps]
+    :param batch_size: The batch_size should be "batch_size" * num_actions
+    :return: Q_retrace values
+    """
+    rhos = np.minimum(1.0, rho_i)  # list of len steps, shape [batch_size]
+    qret = values[-1]
+    qrets = []
+    for i in range(nsteps - 1, -1, -1):
+        qret = rewards[i] + gamma * qret * masks[i]
+        qrets.append(qret)
+        qret = (rhos[i] * (qret - q_is[i])) + values[i]
+    qrets = np.transpose(qrets[::-1])
+    return qrets
 
-def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max_episodes, random=False, baseline=True):
-    # filter_num_list = [_i for _i in range(4, 44, 4)]
-    # units_num_list = [_i for _i in range(8, 88, 8)]
-    filter_num_list = [16, 32, 64, 96, 128, 192, 256]
-    units_num_list = [32, 64, 128, 256, 384, 512, 640]
+
+def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max_episodes, random=False, baseline=True, acer=True):
+    filter_num_list = [_i for _i in range(4, 44, 4)]
+    units_num_list = [_i for _i in range(8, 88, 8)]
+    # filter_num_list = [16, 32, 64, 96, 128, 192, 256]
+    # units_num_list = [32, 64, 128, 256, 384, 512, 640]
     kernel_size_list = [1, 3, 5]
 
     # encoder config
@@ -211,13 +233,17 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
     # rl-baseline controller config
     baseline_config = {
         'fc_size': 256,
-        'n_fc_layers': 1,
+        'n_fc_layers': 2,
         'embedding_dim': encoder_config['embedding_dim'],
         'vocab': Vocabulary(layer_token_list),
         'num_steps': encoder_config['num_steps'],
         'rnn_units': encoder_config['rnn_units'],
         'rnn_type': encoder_config['rnn_type'],
         'rnn_layers': encoder_config['rnn_layers'],
+    }
+
+    acer_config = {
+        'c': 1.0
     }
     # rl_config = {
     #     'baseline': True,
@@ -263,6 +289,8 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         'decay': 0.95,
     }
 
+    if acer: baseline = True
+
     arch_manager = ArchManager(start_net_path, arch_search_folder, net_pool_folder)
     _, run_config, _ = arch_manager.get_start_net()
     run_config.update(arch_search_run_config)
@@ -271,8 +299,12 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
     wider_actor = WiderActorNet(**wider_actor_config)
     deeper_actor = DeeperActorNet(**deeper_actor_config)
 
+    if acer:
+        baseline_actor = BaselineNet(**baseline_config)
+        meta_controller = ReinforceAcerNet2NetController(arch_manager.meta_controller_path, entropy_penalty,
+                                                     encoder, wider_actor, deeper_actor, opt_config, baseline_actor)
 
-    if baseline:
+    elif baseline:
         baseline_actor = BaselineNet(**baseline_config)
         meta_controller = ReinforceBaselineNet2NetController(arch_manager.meta_controller_path, entropy_penalty,
                                                      encoder, wider_actor, deeper_actor, opt_config, baseline_actor)
@@ -289,8 +321,8 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         net_configs = [net_config for net_config, _, _ in nets]
         print "Start with {} net configs".format(len(net_configs))
         # feed_dict for update the controller
-        wider_decision_trajectory, wider_decision_mask = [], []
-        deeper_decision_trajectory, deeper_decision_mask = [], []
+        wider_decision_trajectory, wider_decision_mask, wider_decision_q_values = [], [], []
+        deeper_decision_trajectory, deeper_decision_mask, deeper_decision_q_values = [], [], []
         deeper_block_layer_num = []
         encoder_input_seq, encoder_seq_len = [], []
         wider_seg_deeper = 0
@@ -324,14 +356,20 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
             # on-policy training
             for _j in range(episode_config['wider_action_num']):
                 input_seq, seq_len = get_net_seq(net_configs, encoder.vocab, encoder.num_steps)
-                wider_decision, wider_probs = meta_controller.sample_wider_decision(input_seq, seq_len)
+                if acer: 
+                    wider_decision, wider_probs, wider_q_values = meta_controller.sample_wider_decision_with_q(input_seq, seq_len)
+                    wider_decision_q_values.append(wider_q_values)
+                    # print "wider_decision", np.array(wider_decision).shape
+                    # print "wider_probs", np.array(wider_probs).shape
+                    # print "wider_q_values", np.array(wider_q_values).shape
+                else:
+                    wider_decision, wider_probs = meta_controller.sample_wider_decision(input_seq, seq_len)
                 # modify net config according to wider_decision
                 wider_mask = apply_wider_decision(wider_decision, net_configs, filter_num_list,
                                                   units_num_list, noise_config)
 
                 wider_decision_trajectory.append(wider_decision)
                 wider_decision_mask.append(wider_mask)
-
                 wider_seg_deeper += len(net_configs)
                 encoder_input_seq.append(input_seq)
                 encoder_seq_len.append(seq_len)
@@ -339,8 +377,15 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
             for _j in range(episode_config['deeper_action_num']):
                 input_seq, seq_len = get_net_seq(net_configs, encoder.vocab, encoder.num_steps)
                 block_layer_num = get_block_layer_num(net_configs)
-                deeper_decision, deeper_probs = meta_controller.sample_deeper_decision(input_seq, seq_len,
-                                                                                       block_layer_num)
+                if acer:
+                    deeper_decision, deeper_probs, deeper_q_values = meta_controller.sample_deeper_decision_with_q(input_seq, seq_len,
+                                                                                                                    block_layer_num)
+                    for q in deeper_q_values:
+                        print "deeper_q_values shape:", np.array(q).shape
+                    deeper_decision_q_values.append(deeper_q_values)
+                else:
+                    deeper_decision, deeper_probs = meta_controller.sample_deeper_decision(input_seq, seq_len,
+                                                                                            block_layer_num)
                 # modify net config according to deeper_decision
                 deeper_mask, to_set = apply_deeper_decision(deeper_decision, net_configs,
                                                             kernel_size_list, noise_config)
@@ -362,6 +407,8 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
             if episode_config['wider_action_num'] > 0:
                 wider_decision_trajectory = np.concatenate(wider_decision_trajectory, axis=0)
                 wider_decision_mask = np.concatenate(wider_decision_mask, axis=0)
+                if acer:
+                    wider_decision_q_values = np.concatenate(wider_decision_q_values, axis=0)
             else:
                 wider_decision_trajectory = -np.ones([1, meta_controller.encoder.num_steps])
                 wider_decision_mask = -np.ones([1, meta_controller.encoder.num_steps])
@@ -374,37 +421,43 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 deeper_decision_mask = - np.ones([1, meta_controller.deeper_actor.decision_num])
                 deeper_block_layer_num = np.ones([1, meta_controller.deeper_actor.out_dims[0]])
         # we hve batchsize net config
-        # print "Encoder seq len len = {}".format(len(encoder_seq_len))
-        # print "Encoder seq len = {}".format(encoder_seq_len)
+        # print "Encoder input_seq shape:", encoder_input_seq.shape
+        # print "Encoder seq_len shape:", encoder_seq_len.shape
+        # print "wider_decision_q_values shape:", wider_decision_q_values.shape
         # print "wider_decision_trajectory shape:", wider_decision_trajectory.shape
+        # print "wider_decision_mask shape:", wider_decision_mask.shape
         # print "wider_decision_trajectory", wider_decision_trajectory
+        # print "deeper_decision_q_values shape:", deeper_decision_q_values.shape
         # print "deeper_decision_trajectory shape:", deeper_decision_trajectory.shape
+        # print "deeper_decision_mask shape:", deeper_decision_mask.shape
         # print "deeper_decision_trajectory", deeper_decision_trajectory
+        # return
         run_configs = [run_config] * len(net_configs)
         net_str_list = get_net_str(net_configs)
-
         net_vals = arch_manager.get_net_vals(net_str_list, net_configs, run_configs)
         rewards = arch_manager.reward(net_vals, reward_config)
-
+        # print "Reward shape = {}".format(rewards.shape)
         rewards = np.concatenate([rewards for _ in range(episode_config['wider_action_num'] +
                                                          episode_config['deeper_action_num'])])
         rewards /= episode_config['batch_size']
-        print "Reward shape = {}".format(rewards)
+        # print "Reward shape = {}".format(rewards.shape)
         # rewards = repeat (rewards for every step) = shape(steps per episode * batch size)
         # update the agent
+        # return
         
         if not random:
-            if baseline:
+            if baseline and not acer:
                 meta_controller.update_baseline_network(encoder_input_seq, encoder_seq_len, rewards, learning_rate)
                 advantages = meta_controller.calculate_advantage(rewards, encoder_input_seq, encoder_seq_len)
-
                 rewards = advantages
 
+            if acer:
+                qrets = q_retrace(rewards, masks, q_is, values, rho_i, batch_size, nsteps, gamma)
 
-
+            rho = 1
             meta_controller.update_controller(learning_rate, wider_seg_deeper, wider_decision_trajectory,
                                               wider_decision_mask, deeper_decision_trajectory, deeper_decision_mask,
-                                              rewards, deeper_block_layer_num, encoder_input_seq, encoder_seq_len)
+                                              rewards, deeper_block_layer_num, encoder_input_seq, encoder_seq_len, rho)
 
             meta_controller.save()
         # episode end

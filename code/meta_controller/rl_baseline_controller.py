@@ -25,11 +25,14 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
                                             self.baseline_actor.input_seq: input_seq,
                                             self.baseline_actor.seq_len: input_len})
         adv_val = reward-baseline
-        print "Calculating adv, adv_val shpae = {}, baselin shape = {}".format(adv_val.shape, baseline.shape)
+        # print "Calculating adv, adv_val shpae = {}, baselin shape = {}".format(adv_val.shape, baseline.shape)
         mean = np.mean(adv_val)
         std = np.std(adv_val)
         adv_val = (adv_val-mean)/std
         return adv_val
+
+    # def save_to_replay(self, input_seq, seq_len, rewards):
+
 
     def build_baseline_network(self):
         self.baseline = self.baseline_actor.build()
@@ -38,6 +41,8 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
         adam = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         # use the same learning rate as rl algorithm
         self.update_baseline_op = adam.minimize(loss=loss)
+
+
 
     def update_baseline_network(self, input_seq, seq_len, rewards, learning_rate):
         self.sess.run(self.update_baseline_op,
@@ -70,6 +75,32 @@ class ReinforceBaselineNet2NetController(RLNet2NetController):
         # add baseline to training step
         if self.baseline_actor is not None:
             self.build_baseline_network()
+
+    def sample_wider_decision_with_q(self, input_seq, seq_len):
+        batch_size = len(seq_len)
+        wider_decision, wider_probs, q_values = self.sess.run(
+            fetches=[self.wider_actor.decision, self.wider_actor.probs, self.wider_actor.q_values],
+            feed_dict={
+                self.encoder.input_seq: input_seq,
+                self.encoder.seq_len: seq_len,
+                self.wider_seg_deeper: batch_size,
+            }
+        )  # [batch_size, num_steps]
+        return wider_decision, wider_probs, q_values
+
+    def sample_deeper_decision_with_q(self, input_seq, seq_len, block_layer_num):
+        deeper_decision, deeper_probs, q_values = self.sess.run(
+            fetches=[self.deeper_actor.decision, self.deeper_actor.probs, self.deeper_actor.q_values],
+            feed_dict={
+                self.encoder.input_seq: input_seq,
+                self.encoder.seq_len: seq_len,
+                self.wider_seg_deeper: 0,
+                self.is_training: False,
+                self.deeper_actor.block_layer_num: block_layer_num,
+                self.deeper_decision_trajectory: -np.ones([len(seq_len), self.deeper_actor.decision_num])
+            }
+        )  # [batch_size, decision_num]
+        return deeper_decision, deeper_probs, q_values
 
     def get_wider_entropy_with_baseline(self):
         wider_entropy = -tf.multiply(tf.log(self.wider_actor.probs), self.advantages)
