@@ -468,7 +468,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         n_steps = episode_config['wider_action_num'] + episode_config['deeper_action_num']
         logger.log("net_str", net_str_list)
         logger.log("reward_episode", rewards)
-        logger.log("encoder_input", encoder_input_seq)
+        logger.log("encoder_input", encoder_input_seq.tolist())
         rewards = np.concatenate([rewards for _ in range(episode_config['wider_action_num'] +
                                                          episode_config['deeper_action_num'])])
         rewards /= episode_config['batch_size']
