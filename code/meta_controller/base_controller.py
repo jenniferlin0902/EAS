@@ -271,11 +271,10 @@ class WiderActorNet:
         if self.net_type == 'simple':
             net_config = [] if self.net_config is None else self.net_config
             with tf.variable_scope('wider_actor'):
-                for i, layer in enumerate(net_config):
-                    with tf.variable_scope("layer_{}".format(i)):
-                        units, activation = layer.get('units'), layer.get('activation', 'relu')
-                        output = BasicModel.fc_layer(output, units, use_bias=True)
-                        output = BasicModel.activation(output, activation)
+                for layer in net_config:
+                    units, activation = layer.get('units'), layer.get('activation', 'relu')
+                    output = BasicModel.fc_layer(output, units, use_bias=True)
+                    output = BasicModel.activation(output, activation)
                 logits = BasicModel.fc_layer(output, self.out_dim, use_bias=True)  # [batch_size * num_steps, out_dim]
                 
             probs = BasicModel.activation(logits, final_activation)  # [batch_size * num_steps, out_dim]
@@ -289,6 +288,9 @@ class WiderActorNet:
             self.decision = tf.multinomial(tf.log(probs), 1)  # [batch_size * num_steps, 1]
             self.decision = tf.reshape(self.decision, [-1, self.num_steps])  # [batch_size, num_steps]
             self.probs = tf.reshape(probs, [-1, self.num_steps, probs_dim])  # [batch_size, num_steps, out_dim]
+
+            self.selected_prob = tf.reduce_sum(tf.one_hot(self.decision, probs_dim) * self.probs, axis=-1)
+            self.selected_q = tf.reduce_sum(tf.one_hot(self.decision, probs_dim) * self.q_values, axis=-1)
         else:
             raise ValueError('Do not support %s' % self.net_type)
 
@@ -326,7 +328,7 @@ class DeeperActorNet:
 
     def build_forward(self, encoder_output, encoder_state, is_training, decision_trajectory):
         self._define_input()
-        self.decision, self.probs, self.q_values = [], [], []
+        self.decision, self.probs, self.selected_prob, self.q_values, self.selected_q = [], [], [], [], []
 
         batch_size = array_ops.shape(encoder_output)[0]
         if self.attention_config is None:
@@ -367,7 +369,13 @@ class DeeperActorNet:
                     self.q_values.append(qv)
                     self.decision.append(decision_i)
                     self.probs.append(probs_i)
+                    sq = tf.reduce_sum(tf.one_hot(decision_i, self.out_dims[_i]) * qv, axis=-1)
+                    self.selected_q.append(sq)
+                    sp = tf.reduce_sum(tf.one_hot(decision_i, self.out_dims[_i]) * probs_i, axis=-1)
+                    self.selected_prob.append(sp)
                 self.decision = tf.stack(self.decision, axis=1)  # [batch_size, decision_num]
+                self.selected_q = tf.stack(self.selected_q, axis=1)
+                self.selected_prob = tf.stack(self.selected_prob, axis=1)
         else:
             raise NotImplementedError
 

@@ -5,6 +5,7 @@ from tensorflow.python.ops import array_ops
 from models.basic_model import BasicModel
 import shutil
 import numpy as np
+import random
 
 
 class RLNet2NetController(BaseController):
@@ -38,7 +39,8 @@ class RLNet2NetController(BaseController):
 
         self.graph = tf.Graph()
         self.obj, self.train_step = None, None
-        self.c = tf.constant(1.0, dtype=tf.float32)
+        # self.c = tf.constant(0.8, dtype=tf.float32)
+        self.replay_buf_size = 100
         with self.graph.as_default():
             self._define_input()
             self.build_forward()
@@ -46,6 +48,11 @@ class RLNet2NetController(BaseController):
             self.global_variables_initializer = tf.global_variables_initializer()
             self.saver = tf.train.Saver()
         self._initialize_session()
+
+        # replay buffers
+        self.replay_buf = []
+        # TODO change this to pass from config
+        self.replay_size = 40
 
     def _define_input(self):
         self.learning_rate = tf.placeholder(
@@ -88,10 +95,15 @@ class RLNet2NetController(BaseController):
             shape=[],
             name='has_deeper',
         )
-        self.rho = tf.placeholder(
+        self.wider_rho = tf.placeholder(
             tf.float32,
-            shape=[],
-            name='rho',
+            shape=[None],
+            name='wider_rho',
+        )
+        self.deeper_rho = tf.placeholder(
+            tf.float32,
+            shape=[None],
+            name='deeper_rho',
         )
         self._define_subclass_input()
 
@@ -99,8 +111,9 @@ class RLNet2NetController(BaseController):
         raise NotImplementedError
 
     def update_controller(self, learning_rate, wider_seg_deeper, wider_decision_trajectory, wider_decision_mask,
-                          deeper_decision_trajectory, deeper_decison_mask, reward, block_layer_num, input_seq, seq_len):
-        has_deeper = wider_seg_deeper < len(input_seq)
+                          deeper_decision_trajectory, deeper_decison_mask, reward, block_layer_num, input_seq, seq_len,
+                          wider_rho, deeper_rho):
+        has_deeper = len(deeper_decision_trajectory) > 0
         feed_dict = {
             self.learning_rate: learning_rate,
             self.wider_seg_deeper: wider_seg_deeper,
@@ -114,7 +127,8 @@ class RLNet2NetController(BaseController):
             self.encoder.input_seq: input_seq,
             self.encoder.seq_len: seq_len,
             self.has_deeper: has_deeper,
-            self.rho: rho,
+            self.wider_rho: wider_rho,
+            self.deeper_rho: deeper_rho,
         }
 
         self.sess.run(self.train_step, feed_dict=feed_dict)
@@ -228,7 +242,7 @@ class ReinforceNet2NetController(RLNet2NetController):
         entropy_term /= tf.cast(batch_size, tf.float32)
 
         optimizer = BasicModel.build_optimizer(self.learning_rate, self.opt_config[0], self.opt_config[1])
-        print "in build, reward = {}".format(self.reward)
+        # print "in build, reward = {}".format(self.reward)
         self.train_step = optimizer.minimize(- self.obj - self.entropy_penalty * entropy_term)
 
     def get_wider_side_obj(self):
@@ -239,7 +253,8 @@ class ReinforceNet2NetController(RLNet2NetController):
         wider_probs = tf.reduce_max(tf.multiply(wider_trajectory, self.wider_actor.probs), axis=2)
         wider_probs = tf.log(wider_probs)  # [wider_batch_size, num_steps]
         wider_probs = tf.multiply(wider_probs, self.wider_decision_mask)
-        wider_probs = tf.multiply(wider_probs, tf.reshape(wider_side_reward, shape=[-1, 1]))
+        wider_side_obj = tf.multiply(wider_probs, tf.reshape(wider_side_reward, shape=[-1, 1]))
+        # shape [batch_size * nsteps, num_steps (50)]
 
         wider_side_obj = tf.reduce_sum(wider_probs)
         return wider_side_obj, self.get_wider_entropy()
@@ -258,7 +273,130 @@ class ReinforceNet2NetController(RLNet2NetController):
             deeper_probs = tf.multiply(deeper_probs, deeper_decision_mask)
             deeper_probs = tf.multiply(deeper_probs, deeper_side_reward)
 
-            deeper_side_obj.append(tf.reduce_sum(deeper_probs))
+            deeper_side_obj.append(deeper_probs) # shape [decision_num, batch_size * nsteps]
         deeper_side_obj = tf.reduce_sum(deeper_side_obj)
         return deeper_side_obj, self.get_deeper_entropy()
+
+    def add_to_replay(self, rewards,
+                      encoder_input_seq, encoder_seq_len,
+                      wider_decision_trajectory, deeper_decision_trajectory,
+                      wider_probs_trajectory, deeper_probs_trajectory,
+                      wider_decision_mask, deeper_decision_mask, deeper_block_layer_num,
+                      wider_action_num, deeper_action_num, batch_size):
+        # each term is [batch size * n_step, x]
+        n_step = wider_action_num + deeper_action_num
+
+        # transpose to shape ( batch_size, n_step, -1]
+        # print encoder_seq_len.reshape((n_step, batch_size, -1))
+        encoder_seq_len = np.transpose(encoder_seq_len.reshape((n_step, batch_size, -1)), (1,0,2))
+        encoder_input_seq = np.transpose(encoder_input_seq.reshape((n_step, batch_size, -1)),(1, 0, 2))
+        wider_decision_trajectory = np.transpose(wider_decision_trajectory.reshape((wider_action_num, batch_size, -1)), (1,0,2))
+        wider_probs_trajectory = np.transpose(wider_probs_trajectory.reshape((wider_action_num, batch_size, -1)), (1,0,2))
+        deeper_decision_trajectory = np.transpose(deeper_decision_trajectory.reshape((deeper_action_num, batch_size, -1)), (1,0,2))
+        deeper_probs_trajectory = np.transpose(deeper_probs_trajectory.reshape((deeper_action_num, batch_size, -1)), (1,0,2))
+        deeper_decision_mask = np.transpose(deeper_decision_mask.reshape((deeper_action_num, batch_size, -1)), (1,0,2))
+        wider_decision_mask = np.transpose(wider_decision_mask.reshape((wider_action_num, batch_size, -1)), (1,0,2))
+        deeper_block_layer_num = np.transpose(deeper_block_layer_num.reshape((deeper_action_num, batch_size, -1)), (1,0,2))
+        rewards = np.transpose(rewards.reshape((n_step, batch_size, -1)), (1,0,2))
+
+        # prob trajectory are in shape [batch_size, n_step, n_decision] already
+
+        for i in range(batch_size):
+            self.replay_buf.append((rewards[i],
+                         encoder_input_seq[i], encoder_seq_len[i],
+                            wider_decision_trajectory[i], deeper_decision_trajectory[i],
+                            wider_probs_trajectory[i], deeper_probs_trajectory[i],
+                                   wider_decision_mask[i], deeper_decision_mask[i], deeper_block_layer_num[i]))
+        if len(self.replay_buf) >= self.replay_buf_size:
+            del self.replay_buf[:batch_size]
+
+    def replay_buf_len(self):
+        return len(self.replay_buf)
+
+    def sample_from_replay(self, n):
+        # sample n trajectory from the buffer, might have duplicate
+        trajectories = [list(random.choice(self.replay_buf)) for _ in range(n)]
+        #np.concatenate(trajectories, axis=0)
+
+        # [batchsize, step_size, -1]
+        rewards, encoder_input_seq, encoder_seq_len,\
+        wider_decision_trajectory, deeper_decision_trajectory, \
+        wider_probs_trajectory, deeper_probs_trajectory,\
+        wider_decision_mask, deeper_decision_mask,\
+        deeper_block_layer_num = map(list, zip(*trajectories))
+
+        # convert all to np
+        rewards = np.array(rewards)
+        encoder_input_seq = np.array(encoder_input_seq)
+        encoder_seq_len = np.array(encoder_seq_len)
+        wider_decision_trajectory = np.array(wider_decision_trajectory)
+        wider_probs_trajectory = np.array(wider_probs_trajectory)
+        deeper_decision_trajectory = np.array(deeper_decision_trajectory)
+        deeper_probs_trajectory = np.array(deeper_probs_trajectory)
+        deeper_block_layer_num = np.array(deeper_block_layer_num)
+        # calcuate importance sampling ratio
+        wider_ratio_trajectory = []  # steps, batch size, layer (50)
+        deeper_ratio_trajectory = [] # steps, batch size, decision num
+        wider_q_values = []
+        deeper_q_values = []
+        #print "wider shape {}".format(wider_decision_trajectory.shape)
+        #print "deeper decision shape {}".format(deeper_decision_trajectory.shape)
+        #print "reward shape {}".format(rewards.shape)
+        #print "wider prob shape {}".format(wider_probs_trajectory.shape)
+        #print "deeper prob shape {}".format(deeper_probs_trajectory.shape)
+        #print "wider prob {}".format(wider_probs_trajectory.shape)
+        #print "seq shape {}".format(encoder_input_seq.shape)
+        #print "deeper block layer shape {}".format(deeper_block_layer_num.shape)
+        wider_action_num = wider_decision_trajectory.shape[1]
+        deeper_action_num = deeper_decision_trajectory.shape[1]
+        for _j in range(wider_action_num):
+            # get current policy for each step
+            replay_actions = wider_decision_trajectory[:, _j,:] # batch size, # layer
+            replay_probs = wider_probs_trajectory[:, _j,:] # batch size. # layer
+            _, cur_wider_probs, selected_prob, wider_q, selected_q = self.sample_wider_decision_with_q(encoder_input_seq[:, _j,:], np.squeeze(encoder_seq_len[:, _j, :]))
+
+            # loop through batch
+            # print replay_actions.shape
+            # batch_ratio = []
+            # for b in range(n):
+            #     layer_ratio = []
+            #     for layer in range(self.wider_actor.num_steps):
+            #         layer_ratio.append(cur_wider_probs[b][layer][replay_actions[b][layer]] / replay_probs[b][layer])
+            #     batch_ratio.append(layer_ratio)
+            wider_ratio_trajectory.append(selected_prob)
+            wider_q_values.append(selected_q)
+
+        ## sample deeper actions
+        for _j in range(deeper_action_num):
+
+            replay_actions = deeper_decision_trajectory[:,_j, :]
+            replay_probs = deeper_probs_trajectory[:, _j, :]
+            deeper_start = wider_action_num
+            _, deeper_probs_all, selected_prob, deeper_q, selected_q = self.sample_deeper_decision_with_q(encoder_input_seq[:, _j + deeper_start,:],
+                                                                         np.squeeze(encoder_seq_len[:, _j + deeper_start, :]), deeper_block_layer_num[:,_j,:])
+            # cur_deeper_probs = #decision, #batch
+            # replay_actions = #batch, #decision
+            # batch_ratio = []
+            # for b in range(n):
+            #     # for each batch
+            #     decision_ratio = []
+            #     for decision in range(self.deeper_actor.decision_num):
+            #         # for each decision
+            #         print replay_actions
+            #         print replay_probs
+            #         print deeper_probs_all
+            #         decision_ratio.append(deeper_probs_all[decision][b][replay_actions[b][decision]] / replay_probs[b][decision])
+            #     batch_ratio.append(decision_ratio)
+            # batch_ratio = #batch, #decision
+            deeper_ratio_trajectory.append(selected_prob)
+            # batch_deeper_q shape [batch, decision (3)]
+            deeper_q_values.append(selected_q)
+
+        # all return terms in shape [n_step, batch_size, -1]
+        return np.squeeze(rewards), encoder_input_seq, np.squeeze(encoder_seq_len),\
+        wider_decision_trajectory, deeper_decision_trajectory, \
+        wider_decision_mask, deeper_decision_mask, \
+        deeper_block_layer_num, \
+        wider_ratio_trajectory, deeper_ratio_trajectory, \
+        wider_q_values, deeper_q_values
 
