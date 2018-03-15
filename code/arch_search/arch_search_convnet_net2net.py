@@ -351,8 +351,8 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         # print net_configs[0]
         print "Start with {} net configs".format(len(net_configs))
         # feed_dict for update the controller
-        wider_decision_trajectory, wider_decision_mask, wider_decision_q_values = [], [], []
-        deeper_decision_trajectory, deeper_decision_mask, deeper_decision_q_values = [], [], []
+        wider_decision_trajectory, wider_decision_mask, wider_decision_q_values, wider_all_q = [], [], [], []
+        deeper_decision_trajectory, deeper_decision_mask, deeper_decision_q_values, deeper_all_q = [], [], [], []
         deeper_block_layer_num = []
         encoder_input_seq, encoder_seq_len = [], []
         wider_seg_deeper = 0
