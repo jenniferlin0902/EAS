@@ -23,12 +23,12 @@ if args.setting == 'convnet':
     """
     arch_search_convnet(
         start_net_path='../start_nets/start_net_convnet_C10+_normal',
-        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_normal_acer_v',
-        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_normal_acer_v',
+        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_normal_origin',
+        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_normal_origin',
         max_episodes=30,
         random=False,
-        baseline=True,
-        acer=True,
+        baseline=False,
+        acer=False,
     )
 elif args.setting == 'densenet':
     """
