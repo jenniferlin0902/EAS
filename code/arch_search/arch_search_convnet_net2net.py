@@ -214,17 +214,17 @@ def q_retrace(rewards, masks, q_is, values, rho_i, nsteps, gamma):
 
 
 def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max_episodes, random=False, baseline=True, acer=True):
-    filter_num_list = [_i for _i in range(4, 44, 4)]
-    units_num_list = [_i for _i in range(8, 88, 8)]
-    # filter_num_list = [16, 32, 64, 96, 128, 192, 256]
-    # units_num_list = [32, 64, 128, 256, 384, 512, 640]
+    # filter_num_list = [_i for _i in range(4, 44, 4)]
+    # units_num_list = [_i for _i in range(8, 88, 8)]
+    filter_num_list = [16, 32, 64, 96, 128, 192, 256]
+    units_num_list = [32, 64, 128, 256, 384, 512, 640]
     kernel_size_list = [1, 3, 5]
 
     # encoder config
     layer_token_list = ['conv-%d-%d' % (f, k) for f in filter_num_list for k in [1, 3, 5]]
     layer_token_list += ['fc-%d' % u for u in units_num_list] + ['pool']
     encoder_config = {
-        'num_steps': 50,
+        'num_steps': 20,
         'vocab': Vocabulary(layer_token_list),
         'embedding_dim': 16,
         'rnn_units': 50,
