@@ -25,7 +25,6 @@ def download_data_url(url, download_dir):
             url=url,
             filename=file_path,
             reporthook=report_download_progress)
-
         print('\nExtracting files')
         if file_path.endswith('.zip'):
             zipfile.ZipFile(file=file_path, mode='r').extractall(download_dir)

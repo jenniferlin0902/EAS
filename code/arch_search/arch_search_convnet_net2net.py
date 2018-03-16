@@ -528,6 +528,7 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                     deeper_block_layer_num = np.ones([1, meta_controller.deeper_actor.out_dims[0]])
 
                 wider_probs_trajectory = np.array(wider_probs_trajectory)
+                print "wider_probs_trajectory", wider_probs_trajectory.shape
                 wider_probs_trajectory.transpose((1,0,2)) # batch_size, #n_step, #n_decision
                 deeper_probs_trajectory = np.array(deeper_probs_trajectory)
                 deeper_probs_trajectory.transpose((1,0,2)) # batch_size, #n_step, #layer
