@@ -512,6 +512,8 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                     if acer:
                         wider_decision_q_values = np.concatenate(wider_decision_q_values, axis=0)
                         wider_values = np.concatenate(wider_values, axis=0)
+                        wider_probs_trajectory = np.array(wider_probs_trajectory)
+                        wider_probs_trajectory.transpose((1,0,2)) # batch_size, #n_step, #n_decision
                 else:
                     wider_decision_trajectory = -np.ones([1, meta_controller.encoder.num_steps])
                     wider_decision_mask = -np.ones([1, meta_controller.encoder.num_steps])
@@ -522,16 +524,15 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                     if acer:
                         deeper_decision_q_values = np.concatenate(deeper_decision_q_values, axis=0)
                         deeper_values = np.concatenate(deeper_values, axis=0)
+                        deeper_probs_trajectory = np.array(deeper_probs_trajectory)
+                        deeper_probs_trajectory.transpose((1,0,2)) # batch_size, #n_step, #layer
                 else:
                     deeper_decision_trajectory = - np.ones([1, meta_controller.deeper_actor.decision_num])
                     deeper_decision_mask = - np.ones([1, meta_controller.deeper_actor.decision_num])
                     deeper_block_layer_num = np.ones([1, meta_controller.deeper_actor.out_dims[0]])
 
-                wider_probs_trajectory = np.array(wider_probs_trajectory)
-                print "wider_probs_trajectory", wider_probs_trajectory.shape
-                wider_probs_trajectory.transpose((1,0,2)) # batch_size, #n_step, #n_decision
-                deeper_probs_trajectory = np.array(deeper_probs_trajectory)
-                deeper_probs_trajectory.transpose((1,0,2)) # batch_size, #n_step, #layer
+
+                
                 # we hve batchsize net config
                 # print "Encoder input_seq shape:", encoder_input_seq.shape
                 # print "Encoder seq_len shape:", encoder_seq_len.shape
