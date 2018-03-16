@@ -77,20 +77,21 @@ class ReinforceBaselineNet2NetController(ReinforceNet2NetController):
 
     def sample_wider_decision_with_q(self, input_seq, seq_len):
         batch_size = len(seq_len)
-        wider_decision, wider_probs, selected_prob, q_values, selected_q = self.sess.run(
+        wider_decision, wider_probs, selected_prob, q_values, selected_q, values = self.sess.run(
             fetches=[self.wider_actor.decision, self.wider_actor.probs, self.wider_actor.selected_prob, 
-                     self.wider_actor.q_values, self.wider_actor.selected_q],
+                     self.wider_actor.q_values, self.wider_actor.selected_q, self.wider_actor.values],
             feed_dict={
                 self.encoder.input_seq: input_seq,
                 self.encoder.seq_len: seq_len,
                 self.wider_seg_deeper: batch_size,
             }
         )  # [batch_size, num_steps]
-        return wider_decision, wider_probs, selected_prob, q_values, selected_q
+        return wider_decision, wider_probs, selected_prob, q_values, selected_q, values
 
     def sample_deeper_decision_with_q(self, input_seq, seq_len, block_layer_num):
-        deeper_decision, deeper_probs, selected_prob, q_values, selected_q = self.sess.run(
-            fetches=[self.deeper_actor.decision, self.deeper_actor.probs, self.deeper_actor.selected_prob, self.deeper_actor.q_values, self.deeper_actor.selected_q],
+        deeper_decision, deeper_probs, selected_prob, q_values, selected_q, values = self.sess.run(
+            fetches=[self.deeper_actor.decision, self.deeper_actor.probs, self.deeper_actor.selected_prob, 
+                     self.deeper_actor.q_values, self.deeper_actor.selected_q, self.deeper_actor.values],
             feed_dict={
                 self.encoder.input_seq: input_seq,
                 self.encoder.seq_len: seq_len,
@@ -100,7 +101,7 @@ class ReinforceBaselineNet2NetController(ReinforceNet2NetController):
                 self.deeper_decision_trajectory: -np.ones([len(seq_len), self.deeper_actor.decision_num])
             }
         )  # [batch_size, decision_num]
-        return deeper_decision, deeper_probs, selected_prob, q_values, selected_q
+        return deeper_decision, deeper_probs, selected_prob, q_values, selected_q, values
 
     
     # def get_wider_entropy_with_baseline(self):

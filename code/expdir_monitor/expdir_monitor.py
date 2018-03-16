@@ -98,7 +98,7 @@ class ExpdirMonitor:
             model.pure_train()
             loss, accuracy = model.test(data_provider.validation, batch_size=200)
             json.dump({'valid_loss': '%s' % loss, 'valid_acc': '%s' % accuracy}, open(self.output, 'w'))
-            model.save_init(self.snapshot, print_info=(not pure))
+            # model.save_init(self.snapshot, print_info=(not pure))
             model.save_config(self.expdir, print_info=(not pure))
         else:
             # train the model
@@ -109,6 +109,6 @@ class ExpdirMonitor:
             loss, accuracy = model.test(data_provider.test, batch_size=200)
             print('mean cross_entropy: %f, mean accuracy: %f' % (loss, accuracy))
             json.dump({'test_loss': '%s' % loss, 'test_acc': '%s' % accuracy}, open(self.output, 'w'))
-            model.save_init(self.snapshot, print_info=(not pure))
+            # model.save_init(self.snapshot, print_info=(not pure))
             model.save_config(self.expdir, print_info=(not pure))
         return accuracy

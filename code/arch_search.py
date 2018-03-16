@@ -23,8 +23,8 @@ if args.setting == 'convnet':
     """
     arch_search_convnet(
         start_net_path='../start_nets/start_net_convnet_small_C10+',
-        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_small_acer',
-        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_small_acer',
+        arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_small_acer_v',
+        net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_small_acer_v',
         max_episodes=30,
         random=False,
         baseline=True,

@@ -284,10 +284,11 @@ class WiderActorNet:
                 probs_dim = 2
 
             self.q_values = tf.reshape(BasicModel.fc_layer(output, probs_dim, use_bias=True), [-1, self.num_steps, probs_dim]) 
-            # [batch_size, num_steps, probs_dim]
+            # [batch_size, num_steps, out_dim]
             self.decision = tf.multinomial(tf.log(probs), 1)  # [batch_size * num_steps, 1]
             self.decision = tf.reshape(self.decision, [-1, self.num_steps])  # [batch_size, num_steps]
             self.probs = tf.reshape(probs, [-1, self.num_steps, probs_dim])  # [batch_size, num_steps, out_dim]
+            self.values = tf.reduce_sum(tf.multiply(self.q_values, self.probs), axis=-1) # [batch_size, num_steps]
 
             self.selected_prob = tf.reduce_sum(tf.one_hot(self.decision, probs_dim) * self.probs, axis=-1)
             self.selected_q = tf.reduce_sum(tf.one_hot(self.decision, probs_dim) * self.q_values, axis=-1)
@@ -328,7 +329,7 @@ class DeeperActorNet:
 
     def build_forward(self, encoder_output, encoder_state, is_training, decision_trajectory):
         self._define_input()
-        self.decision, self.probs, self.selected_prob, self.q_values, self.selected_q = [], [], [], [], []
+        self.decision, self.probs, self.selected_prob, self.q_values, self.selected_q, self.values = [], [], [], [], [], []
 
         batch_size = array_ops.shape(encoder_output)[0]
         if self.attention_config is None:
@@ -342,9 +343,9 @@ class DeeperActorNet:
                     with tf.variable_scope('rnn', reuse=(_i > 0)):
                         cell_output, cell_state = cell(cell_input_embed, cell_state)
                     with tf.variable_scope('classifier_%d' % _i):
-                        logits_i = BasicModel.fc_layer(cell_output, self.out_dims[_i], use_bias=True)
+                        logits_i = BasicModel.fc_layer(cell_output, self.out_dims[_i], use_bias=True)  # [batch_size, out_dim_i]
                     with tf.variable_scope('q_value_%d' % _i):
-                        qv = BasicModel.fc_layer(cell_output, self.out_dims[_i], use_bias=True)
+                        qv = BasicModel.fc_layer(cell_output, self.out_dims[_i], use_bias=True)  # [batch_size, out_dim_i]
                     act_i = 'softmax'
                     probs_i = BasicModel.activation(logits_i, activation=act_i)  # [batch_size, out_dim_i]
                     if _i == 1:
@@ -369,11 +370,14 @@ class DeeperActorNet:
                     self.q_values.append(qv)
                     self.decision.append(decision_i)
                     self.probs.append(probs_i)
+                    self.values.append(tf.reduce_sum(tf.multiply(qv, probs_i), axis=-1))
+
                     sq = tf.reduce_sum(tf.one_hot(decision_i, self.out_dims[_i]) * qv, axis=-1)
                     self.selected_q.append(sq)
                     sp = tf.reduce_sum(tf.one_hot(decision_i, self.out_dims[_i]) * probs_i, axis=-1)
                     self.selected_prob.append(sp)
                 self.decision = tf.stack(self.decision, axis=1)  # [batch_size, decision_num]
+                self.values = tf.stack(self.values, axis=1)  # [batch_size, decision_num]
                 self.selected_q = tf.stack(self.selected_q, axis=1)
                 self.selected_prob = tf.stack(self.selected_prob, axis=1)
         else:

@@ -337,8 +337,8 @@ class ReinforceNet2NetController(RLNet2NetController):
         # calcuate importance sampling ratio
         wider_ratio_trajectory = []  # steps, batch size, layer (50)
         deeper_ratio_trajectory = [] # steps, batch size, decision num
-        wider_q_values = []
-        deeper_q_values = []
+        wider_q_values, wider_values = [], []
+        deeper_q_values, deeper_values = [], []
         #print "wider shape {}".format(wider_decision_trajectory.shape)
         #print "deeper decision shape {}".format(deeper_decision_trajectory.shape)
         #print "reward shape {}".format(rewards.shape)
@@ -353,7 +353,7 @@ class ReinforceNet2NetController(RLNet2NetController):
             # get current policy for each step
             replay_actions = wider_decision_trajectory[:, _j,:] # batch size, # layer
             replay_probs = wider_probs_trajectory[:, _j,:] # batch size. # layer
-            _, cur_wider_probs, selected_prob, wider_q, selected_q = self.sample_wider_decision_with_q(encoder_input_seq[:, _j,:], np.squeeze(encoder_seq_len[:, _j, :]))
+            _, cur_wider_probs, selected_prob, wider_q, selected_q, values = self.sample_wider_decision_with_q(encoder_input_seq[:, _j,:], np.squeeze(encoder_seq_len[:, _j, :]))
 
             # loop through batch
             # print replay_actions.shape
@@ -365,6 +365,7 @@ class ReinforceNet2NetController(RLNet2NetController):
             #     batch_ratio.append(layer_ratio)
             wider_ratio_trajectory.append(selected_prob)
             wider_q_values.append(selected_q)
+            wider_values.append(values)
 
         ## sample deeper actions
         for _j in range(deeper_action_num):
@@ -372,7 +373,7 @@ class ReinforceNet2NetController(RLNet2NetController):
             replay_actions = deeper_decision_trajectory[:,_j, :]
             replay_probs = deeper_probs_trajectory[:, _j, :]
             deeper_start = wider_action_num
-            _, deeper_probs_all, selected_prob, deeper_q, selected_q = self.sample_deeper_decision_with_q(encoder_input_seq[:, _j + deeper_start,:],
+            _, deeper_probs_all, selected_prob, deeper_q, selected_q, values = self.sample_deeper_decision_with_q(encoder_input_seq[:, _j + deeper_start,:],
                                                                          np.squeeze(encoder_seq_len[:, _j + deeper_start, :]), deeper_block_layer_num[:,_j,:])
             # cur_deeper_probs = #decision, #batch
             # replay_actions = #batch, #decision
@@ -391,6 +392,7 @@ class ReinforceNet2NetController(RLNet2NetController):
             deeper_ratio_trajectory.append(selected_prob)
             # batch_deeper_q shape [batch, decision (3)]
             deeper_q_values.append(selected_q)
+            deeper_values.append(values)
 
         # all return terms in shape [n_step, batch_size, -1]
         return np.squeeze(rewards), encoder_input_seq, np.squeeze(encoder_seq_len),\
@@ -398,5 +400,6 @@ class ReinforceNet2NetController(RLNet2NetController):
         wider_decision_mask, deeper_decision_mask, \
         deeper_block_layer_num, \
         wider_ratio_trajectory, deeper_ratio_trajectory, \
-        wider_q_values, deeper_q_values
+        wider_q_values, deeper_q_values, \
+        wider_values, deeper_values
 
