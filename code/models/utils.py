@@ -6,6 +6,7 @@ import random
 import os
 import json
 import collections
+from scipy.stats import multivariate_normal, norm
 
 
 def get_model_config_by_name(name):
@@ -24,6 +25,36 @@ def get_model_by_name(name):
         return SimpleConvnet
     else:
         raise ValueError('Unknown model type %s' % name)
+
+class FakeReward():
+    def __init__(self, dim):
+        self.var = np.random.random(dim)
+        self.scale = np.random.random(dim)
+        self.shift = np.random.random(dim)
+        self.dim = dim
+        self.rvs = []
+        np.random.seed(33)
+        for i in range(dim):
+            rv = []
+            scale = []
+            for peak in range(random.randint(3,6)):
+                rv.append(norm(loc=np.random.random(),scale=np.random.random() * 0.1))
+                scale.append(random.random()*10)
+            self.rvs.append([rv,scale])
+
+    def sample(self, X):
+        assert(X.shape[-1] == self.dim)
+        samples = X.reshape([-1,self.dim])
+        vals = []
+        for s in samples:
+            val = 0.0
+            for d in range(self.dim):
+                scale = self.rvs[d][1]
+                rv = self.rvs[d][0]
+                pdfs = [f.pdf(s[d]) for f in rv]
+                val += np.dot(pdfs, scale)
+            vals.append(val/200)
+        return vals
 
 class Logger(object):
     __instance = None

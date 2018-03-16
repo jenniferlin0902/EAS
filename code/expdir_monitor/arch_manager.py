@@ -8,6 +8,7 @@ import pickle
 import numpy as np
 from data_providers.utils import get_data_provider_by_name
 from expdir_monitor import ExpdirMonitor
+from models.utils import FakeReward
 import distributed
 
 
@@ -103,7 +104,7 @@ class NetPool:
 
 
 class ArchManager:
-    def __init__(self, start_net_path, arch_path, net_pool_path):
+    def __init__(self, start_net_path, arch_path, net_pool_path, num_steps):
         self.start_net_monitor = ExpdirMonitor(start_net_path)
         self.start_net_config, self.data_provider = None, None
 
@@ -119,6 +120,7 @@ class ArchManager:
         self.val_log_writer = open(self.val_logs_path, 'a')
         self.net_log_writer = open(self.net_logs_path, 'a')
         self.on_load()
+        self.fake_reward = FakeReward(num_steps)
 
     @property
     def meta_controller_path(self):
@@ -172,6 +174,11 @@ class ArchManager:
         # pickle.dump(net_config.renew_init(None), open(monitor.init, 'wb'))
         # net_config.renew_init(None)
         json.dump({'net_str': net_str}, open(os.path.join(monitor.expdir, 'net.str'), 'w'), indent=4)
+
+    def get_net_vals_fake(self, net_seqs):
+        print "Got net seqs"
+        print net_seqs
+        self.fake_reward.sample(net_seqs)
 
     def get_net_vals(self, net_str_list, net_configs, run_configs):
         net_val_list = [-1] * len(net_str_list)
