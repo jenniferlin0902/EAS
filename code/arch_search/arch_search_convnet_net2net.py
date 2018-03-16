@@ -308,18 +308,20 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         'batch_size': 64,
         'include_extra': False,
         'replay_ratio' : 0.8,
+        'use_fake_reward': False,
     }
 
     # reward config
     reward_config = {
         'func': 'tan',
         'decay': 0.95,
-        'complexity_penalty': 0.001
+        'complexity_penalty': 0.001,
+        'normalize': True,
     }
 
     if acer: baseline = True
 
-    arch_manager = ArchManager(start_net_path, arch_search_folder, net_pool_folder)
+    arch_manager = ArchManager(start_net_path, arch_search_folder, net_pool_folder, encoder_config['num_steps'])
     _, run_config, _ = arch_manager.get_start_net()
     run_config.update(arch_search_run_config)
 
@@ -341,6 +343,18 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
     meta_controller.load()
 
     episode_number = arch_manager.episode + 1
+
+    # get start net reward first
+
+    start_net_config, _, _ = arch_manager.get_start_net(copy=True)
+    if arch_search_run_config['use_fake_reward']:
+        start_seq = get_net_seq([start_net_config], Vocabulary(layer_token_list), encoder_config["num_steps"])
+        start_reward = arch_manager.get_net_vals_fake(start_seq)[0]
+    else:
+        net_str_list = get_net_str([start_net_config])
+        net_vals = arch_manager.get_net_vals(net_str_list, [start_net_config], [run_config])
+        start_reward = arch_manager.reward(net_vals, reward_config)[0]
+
     while episode_number < max_episodes + 1:
         print('episode. %d start. current time: %s' % (episode_number, strftime("%a, %d %b %Y %H:%M:%S", gmtime())))
         start_time = time()
@@ -355,6 +369,8 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         deeper_block_layer_num = []
         encoder_input_seq, encoder_seq_len = [], []
         wider_seg_deeper = 0
+
+
         # buffer to push to replay buffer
         wider_probs_trajectory, deeper_probs_trajectory = [], []
 
@@ -544,10 +560,17 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 # print "deeper_decision_trajectory", deeper_decision_trajectory
                 # return
                 run_configs = [run_config] * len(net_configs)
-                net_str_list = get_net_str(net_configs)
-                net_vals = arch_manager.get_net_vals(net_str_list, net_configs, run_configs)
-                raw_rewards = arch_manager.reward(net_vals, reward_config)
+                if arch_search_run_config['use_fake_reward']:
+                    final_seq = get_net_seq(net_configs, Vocabulary(layer_token_list), encoder_config["num_steps"])
+                    raw_rewards = arch_manager.get_net_vals_fake(final_seq)
+                else:
+                    net_str_list = get_net_str(net_configs)
+                    net_vals = arch_manager.get_net_vals(net_str_list, net_configs, run_configs)
+                    raw_rewards = arch_manager.reward(net_vals, reward_config)
                 # raw_rewards = np.random.uniform(65, 75, episode_config['batch_size']) # only for debugging purpose!!
+                if reward_config['normalize']:
+                    raw_rewards -= start_reward
+
                 if reward_config['complexity_penalty'] != None:
                     rewards = []
                     for i, net in enumerate(net_configs):
@@ -616,7 +639,6 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
             meta_controller.update_Q_function(wider_qrets, deeper_qrets, wider_seg_deeper, encoder_input_seq, encoder_seq_len, deeper_block_layer_num,
                             wider_decision_trajectory, wider_decision_mask, deeper_decision_trajectory, deeper_decision_mask,
                             learning_rate)
-        meta_controller
         meta_controller.save()
         # episode end
         time_per_episode = time() - start_time
