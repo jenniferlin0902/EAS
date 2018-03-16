@@ -25,7 +25,7 @@ if args.setting == 'convnet':
         start_net_path='../start_nets/start_net_convnet_C10+_normal',
         arch_search_folder='../arch_search/Convnet/C10+/Conv_C10+_normal_origin',
         net_pool_folder='../net_pool/Convnet/C10+/Conv_C10+_normal_origin',
-        max_episodes=38,
+        max_episodes=30,
         random=False,
         baseline=False,
         acer=False,
