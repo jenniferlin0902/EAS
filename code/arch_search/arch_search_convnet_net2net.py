@@ -567,13 +567,14 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                                                                  episode_config['deeper_action_num'])])
                 rewards /= episode_config['batch_size']
 
-                meta_controller.add_to_replay(rewards, encoder_input_seq, encoder_seq_len,
-                                              wider_decision_trajectory, deeper_decision_trajectory,
-                                              wider_probs_trajectory, deeper_probs_trajectory,
-                                              wider_decision_mask, deeper_decision_mask,
-                                              deeper_block_layer_num,
-                                              episode_config['wider_action_num'], episode_config['deeper_action_num'],
-                                              episode_config['batch_size'])
+                if acer:
+                    meta_controller.add_to_replay(rewards, encoder_input_seq, encoder_seq_len,
+                                                  wider_decision_trajectory, deeper_decision_trajectory,
+                                                  wider_probs_trajectory, deeper_probs_trajectory,
+                                                  wider_decision_mask, deeper_decision_mask,
+                                                  deeper_block_layer_num,
+                                                  episode_config['wider_action_num'], episode_config['deeper_action_num'],
+                                                  episode_config['batch_size'])
 
         # rewards = repeat (rewards for every step) = shape(steps per episode * batch size)
         # update the agent
