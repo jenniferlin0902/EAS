@@ -207,13 +207,13 @@ class BasicModel(object):
         json.dump(self.run_config.get_config(), open(run_save_path, 'w'), indent=4)
         if print_info: print('Run configs dump to %s' % run_save_path)
 
-    def save_init(self, save_path, print_info=True):
-        os.makedirs(save_path)
-        save_path = os.path.join(save_path, 'init')
-        to_save_init = self.net_config.renew_init(self)
-        to_save_init['dataset'] = self.run_config.dataset
-        pickle.dump(to_save_init, open(save_path, 'wb'))
-        if print_info: print('Network weights dump to %s' % save_path)
+    # def save_init(self, save_path, print_info=True):
+    #     os.makedirs(save_path)
+    #     save_path = os.path.join(save_path, 'init')
+    #     to_save_init = self.net_config.renew_init(self)
+    #     to_save_init['dataset'] = self.run_config.dataset
+    #     pickle.dump(to_save_init, open(save_path, 'wb'))
+    #     if print_info: print('Network weights dump to %s' % save_path)
 
     def pure_train(self):
         n_epochs = self.run_config.n_epochs

@@ -169,7 +169,8 @@ class ArchManager:
         monitor = ExpdirMonitor(exp_dir)
         json.dump(net_config.get_config(), open(monitor.net_config_path, 'w'), indent=4)
         json.dump(run_config.get_config(), open(monitor.run_config_path, 'w'), indent=4)
-        pickle.dump(net_config.renew_init(None), open(monitor.init, 'wb'))
+        # pickle.dump(net_config.renew_init(None), open(monitor.init, 'wb'))
+        # net_config.renew_init(None)
         json.dump({'net_str': net_str}, open(os.path.join(monitor.expdir, 'net.str'), 'w'), indent=4)
 
     def get_net_vals(self, net_str_list, net_configs, run_configs):
