@@ -28,18 +28,20 @@ def get_model_by_name(name):
 
 class FakeReward():
     def __init__(self, dim):
+        np.random.seed(123)
         self.var = np.random.random(dim)
         self.scale = np.random.random(dim)
         self.shift = np.random.random(dim)
         self.dim = dim
         self.rvs = []
-        np.random.seed(33)
         for i in range(dim):
             rv = []
             scale = []
-            for peak in range(random.randint(3,6)):
-                rv.append(norm(loc=np.random.random(),scale=np.random.random() * 0.1))
-                scale.append(random.random()*10)
+            for peak in range(np.random.randint(3,8)):
+                rv.append(norm(loc=np.random.random(),scale=np.random.random()))
+                scale.append(np.random.random()*6)
+            print rv
+            print scale
             self.rvs.append([rv,scale])
 
     def sample(self, X):
