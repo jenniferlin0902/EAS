@@ -177,8 +177,23 @@ class ArchManager:
 
     def get_net_vals_fake(self, net_seqs):
         print "Got net seqs"
-        print net_seqs
-        self.fake_reward.sample(net_seqs)
+        print net_seqs[0]/float(42)
+
+        return self.fake_reward.sample(net_seqs[0]/float(42))
+
+
+    def val2reward(self, net_val_list, func=None):
+        rewards = []
+        for net_val in net_val_list:
+            if func is None:
+                rewards.append(net_val)
+            elif func == 'tan':
+                reward = np.tan(net_val * np.pi / 2)
+                rewards.append(reward)
+            else:
+                raise NotImplementedError
+        return rewards
+
 
     def get_net_vals(self, net_str_list, net_configs, run_configs):
         net_val_list = [-1] * len(net_str_list)
@@ -209,18 +224,6 @@ class ArchManager:
         self.log_nets(net_str_list, episode_total_running_time)
         self.net_pool.save()
         return net_val_list
-
-    def val2reward(self, net_val_list, func=None):
-        rewards = []
-        for net_val in net_val_list:
-            if func is None:
-                rewards.append(net_val)
-            elif func == 'tan':
-                reward = np.tan(net_val * np.pi / 2)
-                rewards.append(reward)
-            else:
-                raise NotImplementedError
-        return rewards
 
     def reward(self, net_val_list, reward_config):
         rewards = self.val2reward(net_val_list, reward_config.get('func'))

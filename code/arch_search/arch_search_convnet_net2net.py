@@ -214,10 +214,10 @@ def q_retrace(rewards, masks, q_is, values, rho_i, nsteps, gamma):
 
 
 def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max_episodes, random=False, baseline=True, acer=True):
-    # filter_num_list = [_i for _i in range(4, 44, 4)]
-    # units_num_list = [_i for _i in range(8, 88, 8)]
-    filter_num_list = [16, 32, 64, 96, 128, 192, 256]
-    units_num_list = [32, 64, 128, 256, 384, 512, 640]
+    filter_num_list = [_i for _i in range(4, 44, 4)]
+    units_num_list = [_i for _i in range(8, 88, 8)]
+    #filter_num_list = [16, 32, 64, 96, 128, 192, 256]
+    #units_num_list = [32, 64, 128, 256, 384, 512, 640]
     kernel_size_list = [1, 3, 5]
 
     # encoder config
@@ -308,15 +308,15 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
         'batch_size': 64,
         'include_extra': False,
         'replay_ratio' : 0.8,
-        'use_fake_reward': False,
+        'use_fake_reward': True,
     }
 
     # reward config
     reward_config = {
         'func': 'tan',
         'decay': 0.95,
-        'complexity_penalty': 0.001,
-        'normalize': True,
+        'complexity_penalty': 0.00,
+        'normalize': False,
     }
 
     if acer: baseline = True
@@ -563,8 +563,13 @@ def arch_search_convnet(start_net_path, arch_search_folder, net_pool_folder, max
                 # return
                 run_configs = [run_config] * len(net_configs)
                 if arch_search_run_config['use_fake_reward']:
+                    print "====== using fake reward ======"
                     final_seq = get_net_seq(net_configs, Vocabulary(layer_token_list), encoder_config["num_steps"])
                     raw_rewards = arch_manager.get_net_vals_fake(final_seq)
+                    logger.log("raw_reward", raw_rewards)
+                    print "====== fake reward ===="
+                    print raw_rewards
+                    net_str_list = get_net_str(net_configs)
                 else:
                     net_str_list = get_net_str(net_configs)
                     net_vals = arch_manager.get_net_vals(net_str_list, net_configs, run_configs)
